@@ -1,0 +1,2253 @@
+API Gateway
+-----------
+Link - https://www.youtube.com/watch?v=1vjOv_f9L8I
+
+It forms an entry point for external client.API Gateway or the Edge microservice is the abstraction layer which exposes the microservices.We will create a microservice which will act as API gateway and pass along the response.
+We are creating a bunch of APIs in accordance to the public APIs that we have decided to expose through API gateway.This technique is also called API composition i.e.we are composing an API out of other existing APIs.
+
+We can add monitoring system to API gateway to check how many requests are coming in, how long they are taking and all that stuff.
+
+We can authenticate users in API gateway.We can pass security tokens like JWT. We can implement security measures and prevent stuff like handling deniel of service attacks, prevent access to certain users and IPs etc.
+
+Open source API gateway implementations from the Netflix microservice stack and it is called Zuul.We download and configure Zuul where
+
+Disadvantage - 
+>> Things are going to be little bit slow.
+
+>> If API gateway system goes down than the whole system goes down as we have one API gateway placed.In this case, we need to create multiple API gateway and split our incoming calls to them using stuff like load balancer and elastic IPs.
+
+External calls --> Load balancer --> API Gateway(multiple) --> Inner microservices
+
+>> It can technically little complicated - Lets suppose we have web client for microservices and we have IOS and Anriod teams and they might need different API in different gateway configurations.In this case, we need to create multiple types of API gateways for each web client type i.e. Web API gateway and Mobile API gateway.We can have those clients to call the right API gateway or the load balancer that route request to right API gateway.Some people call this pattern as "Backend for frontend" pattern. We are creating separate backend endpoints(API gateways) for the frontend thats calling it.
+
+
+Note - Go to frontend developer ask him to call your API gateway as the one end point that frontend team needs to call.
+ 
+
+How do we start using an API Gateway
+
+--> Need to identify first what our external API going to be. This would be the external API contract.
+
+API Gateway Implementation
+--------------------------
+Link - https://www.youtube.com/watch?v=vATi6Rbc06E
+
+Git - https://github.com/Java-Techie-jt/spring-cloud-gatway-hystrix
+
+API Gateway need to be registered in the Eureka Service Registry.So that any request come to the API gateway based on the url pattern can be forwarded to those request to corresponding microservices.If the request is coming with /order then it will redirect to order service and similarly if the request is coming with /payment then it will redirect to payment service.Client cannot directly talk to miroservices.Rather, the client requests will come to API gateway and based on the pattern which is configured in API gateway that request will redirect to corresponding microservices.
+
+--> Create a new springboot project and add dependency "Gateway" which comes under spring cloud routing and this dependency is specific to spring cloud framework.Apart from this, there is one more dependency which is Zuul, so using Zuul also we can perform API releted stuff.However, there is a disadvantage with Zuul. That is Zuul will not support for non blocking API while it has support for the blocking API and its build on top of servlet 2.5., so that's why it is more preferable to use spring cloud gateway rather than Zuul.In addition to this, add Eureka dependency as we are going to register our cloud gateway inside the Eureka service registry and add "Eureka Discovery Client" dependency and also add the "Spring Boot Acuator" dependency.
+
+--> In the main class of the application apply @EnableEurekaClient annotation.
+ We need to register this application as Eureka client.
+
+--> In application.yml 
+spring:
+  application:
+     name:GATEWAY-SERVICE
+
+     cloud:
+       gateway:
+         routes:
+            - id: order-service
+              uri: lb://ORDER-SERVICE (This is registered in eureka service) 
+              predicates:
+                  - Path=/order/**
+
+		- id: payment-service
+              uri: lb://PAYMENT-SERVICE (This is registered in eureka service) 
+              predicates:
+                  - Path=/payment/**
+	
+
+# This is the configuration which acts as client
+eureka:
+   client:
+      register-with-eureka: true
+      fetch-registry:true
+      service-url:
+         defaultZone: http://localhost:8761/eureka/
+      instance: 
+         hostname: localhost
+
+server:
+   port: 8989
+
+>> Now, start the Order Service, Payment Service, Eureka Server, Gateway Client applications
+
+>> Go to chrome browser, access Eureka server i.e.http://localhost:8761 and observe GATEWAY-SERVICE instance is registered because we registered as Gateway client.
+
+>> Go to POSTMAN, access API gateway url i.e.http://localhost:8989/order/bookOrder of POST request
+set request body
+{
+"order":{
+   "id":"ear-phone",
+   "qty":5,
+    "price":4000
+},
+   "payment":{}
+}
+We got the response
+
+This is how we can integrate cloud API gateway in our application whic acts as middle layer before client access to the application microservices.
+
+JPA Repository
+--------------
+The java persistence API is the standard way of persisting java objects into relational databases. JPA repository is mainly useful for implementation of CURD operations and we do not need to create abstract DAO implementing interfaces.Spring data JPA is a good choice.
+
+Link - https://www.journaldev.com/17034/spring-data-jpa
+
+Methods of JPA Repository
+-------------------------
+save(), delete(), findAll(), findFirstName(String firstName) - method returns all entries from table where field first_name equals to firstName are the methods of JPA. This a big benefit, we can call many methods without the need to implement them ourself. 
+
+Cool features of Spring Data JPA
+--------------------------------
+--> Create and support repositories created with Spring and JPA
+--> Support QueryDSL and JPA queries
+--> Audit of domain classes
+--> Support for batch loading, sorting, dynamical queries
+--> Supports XML mapping for entities
+--> Reduce code size for generic CRUD operations by using CrudRepository
+
+Sr. No.	Key	JPARepository	CrudRepository
+1	Hierarchy	JPA extend crudRepository and PagingAndSorting repository	Crud Repository is the base interface and it acts as a marker interface.
+2	Batch support	JPA also provides some extra methods related to JPA such as delete records in batch and flushing data directly to a database.	It provides only CRUD functions like findOne, saves, etc.
+3	Pagination support	JPA repository also extends the PagingAndSorting repository. It provides all the method for which are useful for implementing pagination.	Crud Repository doesn't provide methods for implementing pagination and sorting.
+4	Use Case	JpaRepository ties your repositories to the JPA persistence technology so it should be avoided.	We should use CrudRepository or PagingAndSortingRepository depending on whether you need sorting and paging or not.
+
+HTTP Methods in RESTful Web Services
+------------------------------------
+https://www.javadevjournal.com/spring/restful-methods/
+
+Spring boot crud operations example with hibernate
+--------------------------------------------------
+https://howtodoinjava.com/spring-boot2/spring-boot-crud-hibernate/
+
+Springboot + JPA + Hibernate + MySql 
+------------------------------------
+>> Packaging - Jar
+>> Version - Java 8
+>> Dependencies - Lombok, Spring Web, MySQL Driver, Spring Data JPA
+>> In Entity class, if we won't specify the table name then JPA is smart enough to create table name with our class name.
+>> Create a repository class which will extends JpaRepository<Entity_Class_Name, Data_Type_PrimaryKey>
+>> In springboot application.properties or application.yml file, all the datasource related properties specified in this file.
+>> Go to MySQL workbench, 
+create database database_name;
+use database_name;
+>> Service will talk to repository by autowiring.
+>> Controller will talk to service class by autowiring.
+>> Note - Any input if we want to pass as request URL then we should go for @PathVariable annotation.
+>>persist product object to database.
+
+Transaction or Spring Data JPA Transaction Management
+-----------------------------------------------------
+Lets assume, we are going to book one flight ticket.So, we need to provide Passenger Info like name, source, dest and fare and Payment Info like acctNo, cardType. We want to store Passenger Info and Payment Info into database.But, while processing the payment failure occur.This failure can be payment gateway issue or it can be specific to any bank server error.At the middle of our application we got our payment info cannot persist to database.But if you observed, Passenger Info is already stored in database.Even though there is no successful payment for particular passenger or particular journey we can not generate any invoice or we cannot generate any acknowledgement for that specific journey.So, in such case there is no use to keep those Passenger Info where there is no succeed payment.We don't want to keep any unused data into database if there is any exception.Also, we just want to avoid data inconsistency in our application.To overcome this issue spring framework came up with one feature called Transaction.The goal is if everything is succeed then just commit those data to database.If something going wrong just rollback those details from our database.So, that we can ignore data inconsistency in our application.
+
+>> Create a springboot application having dependencies lombok, spring web, Spring Data JPA, MySQL Driver and spring boot version as 2.4.1 which is latest.
+
+>> In entity package, we have two classes i.e. PassengerInfo.java and PaymentInfo.java
+PassengerInfo.java
+------------------
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = "PASSENGER_INFOS")
+public class PassengerInfo {
+    @Id
+    @GeneratedValue
+    private Long pId;
+    private String name;
+    private String email;
+    private String source;
+    private String Destination;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy")
+    private Date travelDate;
+    private String pickupTime;
+    private String arrivalTime;
+    private double fare;
+
+Note - Here, travelDate is of Date type.But, we just want to pass String as a input from json request. 
+
+PaymentInfo.java
+----------------
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = "PAYMENT_INFO")
+public class PaymentInfo {
+
+    @Id
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
+    private String paymentId;
+    private String accountNo;
+    private double amount;
+    private String cardType;
+    private Long passengerId;
+}
+
+Here, we used paymentId to generate as random string that's why uuid2 generator is used given by hibernate.
+
+Note - We are mapping passengerId in PaymentInfo table.
+
+>> In repository, we have two classes i.e. PassengerInfoRepository.java and PaymentInfoRepository.java
+
+PassengerInfoRepository.java
+----------------------------
+public interface PassengerInfoRepository extends JpaRepository<PassengerInfo,Long> {
+}
+
+PaymentInfoRepository.java
+--------------------------
+public interface PaymentInfoRepository extends JpaRepository<PaymentInfo,String> {
+}
+
+>> Data source related properties
+   ------------------------------
+application.properties
+----------------------
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.url = 
+spring.datasource.username =
+spring.datasource.pass = Pass
+spring.jpa.show-sql = true
+spring.jpa.hibernate.ddl-auto = update
+spring.jpa.properties.hibernate.dialect = org.hibernate.dialect.MySQL8Dialect
+server.port=9090
+
+>> In dto package, create request and response
+FlightBookingAcknowledgement.java
+---------------------------------
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class FlightBookingAcknowledgement {
+
+    private String status;
+    private double totalFare;
+    private String pnrNo;
+    private PassengerInfo passengerInfo;
+}
+
+Here, in FlightBookingAcknowledgement, we return few fields.
+
+FlightBookingRequest.java
+-------------------------
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class FlightBookingRequest {
+
+    private PassengerInfo passengerInfo;
+
+    private PaymentInfo paymentInfo;
+}
+
+Here, in FlightBookingRequest, we request passengerInfo and paymentInfo.
+
+>> In service package, 
+FlightBookingService.java
+-------------------------
+@Service
+public class FlightBookingService {
+
+    @Autowired
+    private PassengerInfoRepository passengerInfoRepository;
+    @Autowired
+    private PaymentInfoRepository paymentInfoRepository;
+
+    @Transactional//(readOnly = false,isolation = Isolation.READ_COMMITTED,propagation = Propagation.REQUIRED)
+    public FlightBookingAcknowledgement bookFlightTicket(FlightBookingRequest request) {
+
+        PassengerInfo passengerInfo = request.getPassengerInfo();
+        passengerInfo = passengerInfoRepository.save(passengerInfo);
+
+        PaymentInfo paymentInfo = request.getPaymentInfo();
+
+	//We will get the exception if the paid amount > existing amount in account 
+        PaymentUtils.validateCreditLimit(paymentInfo.getAccountNo(), passengerInfo.getFare());
+
+        paymentInfo.setPassengerId(passengerInfo.getPId());
+        paymentInfo.setAmount(passengerInfo.getFare());
+        paymentInfoRepository.save(paymentInfo);
+        return new FlightBookingAcknowledgement("SUCCESS", passengerInfo.getFare(), UUID.randomUUID().toString().split("-")[0], passengerInfo);
+
+    }
+}
+
+Here, we need to get the PassengerInfo from the (FlightBookingRequest and we want to save into database. We call validateCreditLimit() method in flight booking service.We can throw exception while processing the payment to verify Transaction behaviour.First, we are persisting passengerInfo to database and then we are validating the paymentUtil.And, if everything is succeed then it will proceed ahead of paymentUtils.
+
+>>  We need to write the util class in order to validate payment/credit limit.Suppose, we are giving rs 1000 as input but in our account we have only rs 500.Hence, the transaction should be failed and ultimately the payment should be failed.
+In Util package, we have PaymentUtils class where we can validate the credit limit.
+PaymentUtils.java
+-----------------
+public class PaymentUtils {
+
+    private static Map<String, Double> paymentMap = new HashMap<>();
+    String as account number and value as Double.
+    static because we can initialize those values at the time of class loading.	
+
+    static {
+        paymentMap.put("acc1", 12000.0);
+        paymentMap.put("acc2", 10000.0);
+        paymentMap.put("acc3", 5000.0);
+        paymentMap.put("acc4", 8000.0);
+    }
+
+
+    public static boolean validateCreditLimit(String accNo, double paidAmount) {
+        if (paidAmount > paymentMap.get(accNo)) {
+            throw new InsufficientAmountException("insufficient fund..!");
+        } else {
+            return true;
+        }
+    }
+}
+
+>> In exception package, 
+InsufficientAmountException.java
+--------------------------------
+public class InsufficientAmountException extends RuntimeException {
+
+    public InsufficientAmountException(String msg){
+        super(msg);
+    }
+}
+
+>> 
+
+Here, we hardcoded few account numbers and credit limits.
+
+>> We will write the endpoints and controller part in the main class of the application.
+FlightServiceExampleApplication.java
+------------------------------------
+@SpringBootApplication
+@RestController
+@EnableTransactionManagement
+public class FlightServiceExampleApplication {
+
+	@Autowired
+	private FlightBookingService service;
+
+
+	@PostMapping("/bookFlightTicket")
+	public FlightBookingAcknowledgement bookFlightTicket(@RequestBody FlightBookingRequest request){
+		return service.bookFlightTicket(request);
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(FlightServiceExampleApplication.class, args);
+	}
+
+}
+
+>> If we start application without @Transaction and application will start on port 9090.In POSTMAN,
+http://localhost:9090/bookFlightTicket (POST request)
+Change the body type raw, application/JSON
+We need to pass JSON request which contain passenger info and payment info.
+{
+
+}
+	
+We will observe that there is 500 internal server error.We will also see that there is already record created/inserted for passenger info but there is no record created for payment info because of payment exception as paid amount is greater then the existing amount in the account. So, here we need to delete payment info and passenger info in the database because it is of no use.
+
+In the service class, annotate @Transactional on the bookFlightTicket() method and in the main class just enable the transaction i.e. @EnableTransactionManagement
+Also, in @Transaction we can add few properties i.e.readonly = false, isolation = Isolation.READ_COMMITED,
+Propagation = Propagation.REQUIRED.
+If the payment exception occur then there will be no creation/insertion of passenger info table.No record inserted in the database because there is a failure in application.Here, passenger info and payment info tables will be created but there will be no data if payment failed.
+We apply @Transaction in order to avoid data inconsistency.
+
+
+Springboot JPA/Hibernate Composite Primary Key
+----------------------------------------------
+How to map a composite primary key in a springboot application using spring data JPA.
+
+Composite Key and Its use - When ever we want to define primary key with combination of multiple column that concept is called as composite primary key.In a user table it is hard to assume user by its id only.Sometimes, we take id and phone or id and email as composite primary key.It is because sometimes same id is assigned to two different employees of different department.So, thats why we required composite primary key.
+
+>> Create a springboot application having dependencies i.e. lombok, spring data jpa, MySQL Driver.
+
+>> In entity pack, 
+Employee.java
+-------------
+@Entity
+@Table(name = "EMPLOYEE_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+/*@IdClass(EmployeePKId.class)*/
+public class Employee {
+    @EmbeddedId
+    private EmployeePKId employeePKId;
+    private String name;
+    private String email;
+    private String phone;
+}
+
+EmployeePKId.java
+-----------------
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode
+@Embeddable
+public class EmployeePKId implements Serializable {
+    private int employeeId;
+    private int deptId;
+}
+
+Here, if we are going for composite primary key then we must go for @EqualsAndHashCode and implements that class as Serializable.And, EmployeePKId will be consider as composite primary key. We will annotate @IdClass(EmployeePKId.class) in Employee class.That means we are telling we have two keys to consider as composite primary key.
+
+>> In respository, 
+EmployeeRepository.java
+-----------------------
+public interface EmployeeRepository extends JpaRepository<Employee, EmployeePKId> {
+}
+
+>> We will write the controller class in the main class of the application
+
+EmployeeServiceApplication.java
+-------------------------------
+@SpringBootApplication
+@RestController
+@RequestMapping("/employee")
+public class EmployeeServiceApplication {
+
+    @Autowired
+    private EmployeeRepository repository;
+
+    @PostMapping
+    public Employee save(@RequestBody Employee employee) {
+        return repository.save(employee);
+    }
+
+    @GetMapping
+    public List<Employee> getAll() {
+        return repository.findAll();
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(EmployeeServiceApplication.class, args);
+    }
+
+}
+
+>> >> Data source related properties
+   ------------------------------
+application.properties
+----------------------
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+spring.datasource.url = 
+spring.datasource.username = 
+spring.datasource.pass = Pass
+spring.jpa.show-sql = true
+spring.jpa.hibernate.ddl-auto = update
+spring.jpa.properties.hibernate.dialect = org.hibernate.dialect.MySQL8Dialect
+server.port=9090
+
+>> Run application, it created the table and application is up on port 9090.While we hit multiple times the http://localhost:9090/employee by giving employeeId and deptId same then it will not create multiple records in the database because we are taking employeeId and deptId both as primary key.If deptId is changed to some different value then it will craete two records in the database.
+
+>> We need to ignore @IdClass(EmployeePKId.class) and apply @EmbeddedId.
+
+Springboot Logging With SL4J and Logback
+----------------------------------------
+>> Create a spring boot application having dependencies as spring web and dev tools.
+
+>> In main class of application,
+SpringBootLoggingApplication.java
+---------------------------------
+@SpringBootApplication
+@RestController
+public class SpringBootLoggingApplication {
+
+	Logger log = LoggerFactory.getLogger(SpringBootLoggingApplication.class);
+
+	@GetMapping("/test/{name}")
+	public String greeting(@PathVariable String name) {
+		log.debug("Request {}", name);
+		if (name.equalsIgnoreCase("test")) {
+			throw new RuntimeException("Opps Exception raised....");
+		}
+		String response = "Hi " + name + " Welcome to Java Techie";
+		log.debug("Response {}", response);
+		return response;
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringBootLoggingApplication.class, args);
+	}
+}
+
+Sl4J we can not use string concadination, so we can save the memory while in Log4J we can use string concadination. 
+
+>> Configure the logging related things in application.properties file
+#logging.level.s7.Application=WARN
+#logging.level.org.springframework.web=ERROR
+#logging.level.com.javatechie.spring.logging.api=DEBUG (root package of our application)
+
+# Logging pattern for the console
+#logging.pattern.console= "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+#logging pattern for file
+#logging.pattern.file= "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+#logging.file=C:/Users/bahota/Desktop/spring-boot-logging/api.log
+
+>> Start the application and hit the url in the browser i.e. http://localhost:8080/test/Ashish and we get the response.
+
+>> After we check the api.log file, we will see the start up of the application and see the request and response.And in console, we will see the same output because we have added two appender in application.properties file.
+
+>> We can also apply the same logging appenders in application.yml file in hirarchey manner
+logging:
+  level:
+    org.springframework.web: ERROR
+    com.javatechie.spring.logging.api: DEBUG
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} - %msg%n'
+    file: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'
+  file: C:/Users/bahota/Desktop/spring-boot-logging/api1.log
+
+>> Customize the logging using the logback.xml file
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+	<property name="DEV_HOME" value="logs" />
+
+	<appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+		<layout class="ch.qos.logback.classic.PatternLayout">
+			<Pattern>
+				%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} -
+				%msg%n
+			</Pattern>
+		</layout>
+	</appender>
+
+	<appender name="FILE-AUDIT"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${DEV_HOME}/debug.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<Pattern>
+				%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} -
+				%msg%n
+			</Pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- rollover daily -->
+			<fileNamePattern>${DEV_HOME}/archived/debug.%d{yyyy-MM-dd}.%i.log
+			</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy
+				class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>10MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+
+	</appender>
+
+	<appender name="FILE-ERROR"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${DEV_HOME}/error.log</file>
+		<encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+			<Pattern>
+				%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} -
+				%msg%n
+			</Pattern>
+		</encoder>
+
+		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- rollover daily -->
+			<fileNamePattern>${DEV_HOME}/archived/error.%d{yyyy-MM-dd}.%i.log
+			</fileNamePattern>
+			<timeBasedFileNamingAndTriggeringPolicy
+				class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+				<maxFileSize>10MB</maxFileSize>
+			</timeBasedFileNamingAndTriggeringPolicy>
+		</rollingPolicy>
+
+	</appender>
+
+	<!-- Send logs to both console and file audit -->
+	<logger name="com.javatechie.spring.logging.api" level="debug"
+		additivity="false">
+		<appender-ref ref="FILE-AUDIT" />
+		<appender-ref ref="STDOUT" />
+	</logger>
+
+	<root level="error">
+		<appender-ref ref="FILE-ERROR" />
+	</root>
+
+</configuration>
+
+Here, we have customize, error.log and debug.log files separately by applying separate appenders for each in logback.xml file.If there is any error in application then it will show in error.log file. 
+
+Springboot Actuator
+-------------------
+Link - https://www.youtube.com/watch?v=ylzsHzRqvgc&list=PLVz2XdJiJQxw-jVLpBfVn2yqjvA1Ycceq&index=7
+(Java Techie)
+
+>> We are using springboot actuator to monitor our application in each environment.Moreover, springboot acuator allows us to monitor and manage application usages in production environment without writing single line of code.
+We just need to add springboot acuator dependencies and we are done.Everything will be taken care by springboot itself.
+
+>> Create a spring boot application having dependencies lombok, acuator, devtools, web.
+
+>> Implement one small endpoint, so that we will check the default URL provided by acuator to check health matrix and regarding beans info. 
+
+>> Create a controller class named MyController.
+MyController.java
+-----------------
+@RestController
+@RequestMapping("/spring-boot-actuator")
+public class MyController {
+
+	@GetMapping("/test")
+	public String testEndPoint() {
+		return "Spring boot actuator example";
+	}
+Now run the project to check the default endpoint provided by the acuator.In IDE console, we can see its giving two endpoints one is acuator health and another one is the acuator info.This is introduced in springboot version 2 in which these two default endpoints enabled for us now.
+
+>> Go to POSTMAN, http://localhost:8080/spring-boot-acuator/test (GET). We will get response as "Spring boot actuator example".
+
+>> Execute acuator health, http://localhost:8080/acuator/health which is display "status":UP and http://localhost:8080/acuator/info which gives {} i.e. empty.
+
+>> To enable all acuator endpoints we need to include them is properties file i.e.application.properties file
+management.endpoints.web.exposure.include=*
+
+>> Again, we run the application and check in IDE console there are all 14 endpoints released. 
+
+>> Note - all these aquator endpoints are by default available in spring boot version 1.x
+
+>> We can also implement customized health indicator. For this create a class InternetHealthMatrics.
+InternetHealthMatrics.java
+--------------------------
+@Component
+public class InternetHealthMetrics implements HealthIndicator {
+
+	@Override
+	public Health health() {
+		return checkInternet() == true ? Health.up().withDetail("success code", "Active Internet Connection").build()
+				: Health.down().withDetail("error code", "InActive Internet Connection").build();
+
+	}
+
+	private boolean checkInternet() {
+		boolean flag = false;
+		try {
+			URL url = new URL("https://www.google.com");
+			URLConnection connection = url.openConnection();
+			connection.connect();
+			flag = true;
+		} catch (Exception e) {
+			flag = false;
+		}
+		return flag;
+	}
+}
+
+
+>> In order to enable this custom health matrix indicator in springboot aquator we need to mention some properties in application.properties file.
+management.endpoint.health.show-details=always
+
+>> Go to POSTMAN, http://localhost:8080/acuator/health/ we will get the custom response.If internet connection is UP then it will show positive response but if internet connection is down then it will show negative response.
+
+>> Implement own custom endpoint. Create MyEndPoint class and annotate with @Endpoint(id="javatechie",enableByDefault=true). Custom class created in order to give response in expected format.
+
+@Component
+@Endpoint(id = "javatechie", enableByDefault = true)
+public class MyEndPoint {
+
+	@ReadOperation
+	public MyEndPointResponse features() {
+		return new MyEndPointResponse(263872, "Java-Techie", "Active ");
+	}
+
+}
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+class MyEndPointResponse {
+	private int id;
+	private String name;
+	private String status;
+}
+
+>> Go to POSTMAN, http://localhost:8080/acuator/javatechie its giving the custom response as we manually added
+{
+ "id":263872,
+  "name": "Java-Techie",
+   "status": "Active"	
+}
+
+Based on business we can specify our own custom endpoint with desired response fields.
+
+>> Go to browser, http://localhost:8080/actuator - it will show all the default endpoints exposed by springboot actuator.
+
+>> We will write an endpoint which will give list of user objects.In this, UserController and UserDatabase we are using as a bean.
+
+UserController.java 
+-------------------
+@RestController
+public class UserController {
+
+    @Autowired
+    private UserDatabase database;
+
+    @GetMapping("/loadUsers")
+    public List<User>  getUsers(){
+        return database.getAllUsers();
+    }
+}
+
+UserDatabase.java(Dummy database)
+---------------------------------
+@Repository
+public class UserDatabase {
+
+
+
+    public List<User> getAllUsers() {
+        return Stream.of(
+                new User(108, "zyx", "xyz@gmail.com", "inActive"),
+                new User(101, "john", "john@gmail.com", "active"),
+                new User(102, "smith", "smith@gmail.com", "inActive"),
+                new User(103, "peter", "peter@gmail.com", "active"),
+                new User(104, "kely", "kely@gmail.com", "active"))
+                .collect(Collectors.toList());
+    }
+
+
+    public long getUserStatusCountByStatus(String status){
+       return getAllUsers().stream().filter(user -> user.getStatus().equals(status)).count();
+    }
+
+}
+
+User.java
+---------
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class User {
+
+    private int id;
+    private String name;
+    private String email;
+    private String status;
+}
+
+CustomEndPoint.java
+-------------------
+@Component
+@Endpoint(id = "release-notes")
+public class CustomEndpoint {
+
+
+    Map<String, List<String>> releaseNotesMap = new LinkedHashMap<>();
+
+    @PostConstruct
+    public void initNotes() {
+        releaseNotesMap.put("version-1.0", Arrays.asList("Home page created", "Adding a new item form added", "View the watchlist page added"));
+        releaseNotesMap.put("version-1.1", Arrays.asList("Reading from OMDb API added", "Actuator endpoints added"));
+    }
+
+    @ReadOperation
+    public Map<String, List<String>> getReleaseNotes(){
+        return releaseNotesMap;
+    }
+
+    @ReadOperation
+    public List<String> getNotesByVersion(@Selector String version){
+        return releaseNotesMap.get(version);
+    }
+
+    @WriteOperation
+    public void addReleaseNotes(@Selector String version, String releaseNotes){
+        releaseNotesMap.put(version,Arrays.stream(releaseNotes.split(",")).collect(Collectors.toList()));
+    }
+
+    @DeleteOperation
+    public void  deleteNotes(@Selector String version){
+        releaseNotesMap.remove(version);
+    }
+}
+
+UserStatusCountContributor.java
+-------------------------------
+@Component
+public class UserStatusCountContributor implements InfoContributor {
+
+    @Autowired
+    private UserDatabase database;
+
+    @Override
+    public void contribute(Info.Builder builder) {
+        Map<String, Long> userStatusMap=new HashMap<>();
+        userStatusMap.put("active",database.getUserStatusCountByStatus("active"));
+        userStatusMap.put("inActive",database.getUserStatusCountByStatus("inActive"));
+        builder.withDetail("userStatus",userStatusMap);
+    }
+}
+
+SpringbootActuatorApplication.java(main class)
+----------------------------------------------
+@SpringBootApplication
+public class SpringbootActuatorApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringbootActuatorApplication.class, args);
+	}
+
+}
+
+>> Go to browser, http://localhost:8080/loadUsers - It will show all the user objects.
+   http://localhost:8080/actuator/beans - We will find the bean class name userController.
+   Similarly, if we check the UserDatabase then in userController bean we will see UserDatabase under dependencies.Moreover, if will search then we will see userDatabase as separate bean.If there is any dependencies to UserDatabase then we can see in this section.
+
+Lot of information is given by springboot actuator we just need to use it properly to monitor our application.
+
+>> Go to mapping endpoint, http://localhost:8080/actuator/mappings - search for loadUsers and it will show the loadUser GET endpoint information.
+
+>> Go to actuator endpoint, http://localhost:8080/actuator/ - Here, it will show all the endpoints to monitor our application.
+
+>> If we will hot http://localhost:8080/actuator/info - It will show {} empty information. According to springboot 2.0, we can use any static data to this /info endpoint.As we are saying static data that means we can add information related to application or we can add some release note related stuff.
+
+For example, add info stuff in application.yml file 
+
+info:
+  application:
+    name : springboot-actuator
+    Description : Spring Boot Actuator 2.x Enhancement
+    artifact : springboot-actuator
+    version : 0.0.1-SNAPSHOT
+
+Again, access http://localhost:8080/actuator/info in browser to see the above information.
+
+Similarly, we can add release notes 
+
+>> In order to show dynamic information, springboot 2.x introduced a interface called InfoContributor. To do that, lets say we want one scenario lets say we want to display active and inactive user count as part of /info endpoint.Go to User and there is a field called status. With this status we can identify user is active or not and its count. 
+
+//method will return the count of active and inactive user.
+ public long getUserStatusCountByStatus(String status){
+       return getAllUsers().stream().filter(user -> user.getStatus().equals(status)).count();
+    }
+
+UserStatusCountContributor.java
+-------------------------------
+@Component
+public class UserStatusCountContributor implements InfoContributor {
+
+    @Autowired
+    private UserDatabase database;
+
+    @Override
+    public void contribute(Info.Builder builder) {
+        Map<String, Long> userStatusMap=new HashMap<>();
+        userStatusMap.put("active",database.getUserStatusCountByStatus("active"));
+        userStatusMap.put("inActive",database.getUserStatusCountByStatus("inActive"));
+        builder.withDetail("userStatus",userStatusMap);
+    }
+}
+
+Now, run the application and go to the browser http://localhost:8080/actuator/info - it will show active and inactive user.
+
+So, as a part of /info we can get static and dynamic data.
+
+>> Create own custom endpoint - As part of this custom endpoint we just want to maintain some release notes.For example, we say in V1 release we release couple of feature and in V2 release another couple of feature.Those information we just want to maintain and want to expose those information as custom endpoint.Please check the CustomEndpoint class above.
+
+http://localhost:8080/release-notes/version-1.0 it will show release notes of version-1.0
+
+@DeleteOperation is DELETE mapping
+@WriteOperation is POST mapping
+@ReadOperation is GET mapping
+
+http://localhost:8080/actuator/release-notes - it will show all the version release notes.
+
+Multithreading In Springboot Using CompletableFuture
+----------------------------------------------------
+>> Create spring boot project having dependencies lombok, spring web, JPA, H2.
+
+>> In entity package, 
+User.java
+---------
+@Data
+@Entity
+@Table(name = "USER_TBL")
+@AllArgsConstructor
+@NoArgsConstructor
+public class User {
+    @Id
+    @GeneratedValue
+    private int id;
+    private String name;
+    private String email;
+    private String gender;
+}
+
+>> Generate csv/xml file - Go to, http://mockaroo.com where we can generate csv/xml file.Specify the fields and choose the format i.e.csv/xml/json and click Download Data which will download a dummy template.
+
+>> In repository package, 
+UserRepository.java
+-------------------
+public interface UserRepository extends JpaRepository<User,Integer> {
+}
+
+>> Create config class where we can configure thread pool related stuff - In config package,
+AsyncConfig.java
+----------------
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+
+    //thread pool task executor	
+    @Bean(name ="taskExecutor")
+    public Executor taskExecutor(){
+        ThreadPoolTaskExecutor executor=new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(2);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("userThread-");
+        executor.initialize();
+        return executor;
+    }
+}
+
+>> In service package,
+UserService.java
+----------------
+@Service
+public class UserService {
+
+    @Autowired
+    private UserRepository repository;
+
+    Object target;
+    Logger logger = LoggerFactory.getLogger(UserService.class);
+
+    //This method will read csv file and make it as object to persistent database.User data will get from the csv 	
+      file and for that we made the method argument as MultipartFile then we will get the data from file.However,        this method will work forward to save list of user. 
+    @Async
+    public CompletableFuture<List<User>> saveUsers(MultipartFile file) throws Exception {
+        long start = System.currentTimeMillis();
+        List<User> users = parseCSVFile(file);
+        logger.info("saving list of users of size {}", users.size(), "" + Thread.currentThread().getName());
+        users = repository.saveAll(users);
+        long end = System.currentTimeMillis();
+        logger.info("Total time {}", (end - start));
+        return CompletableFuture.completedFuture(users);
+    }
+
+    //This method will fetch user objects from DB.However, this method will work to fetch all the users.
+    @Async (this annotation is for asyncronous call)
+    public CompletableFuture<List<User>> findAllUsers(){
+        logger.info("get list of user by "+Thread.currentThread().getName());
+        List<User> users=repository.findAll();
+        return CompletableFuture.completedFuture(users);
+    }
+
+    
+    //Utility method which parse CSV file
+    private List<User> parseCSVFile(final MultipartFile file) throws Exception {
+        final List<User> users = new ArrayList<>();
+        try {
+            try (final BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    final String[] data = line.split(",");
+                    final User user = new User();
+                    user.setName(data[0]);
+                    user.setEmail(data[1]);
+                    user.setGender(data[2]);
+                    users.add(user);
+                }
+                return users;
+            }
+        } catch (final IOException e) {
+            logger.error("Failed to parse CSV file {}", e);
+            throw new Exception("Failed to parse CSV file {}", e);
+        }
+    }
+}
+
+>> In controller package,
+UserController.java
+-------------------
+@RestController
+public class UserController {
+    @Autowired
+    private UserService service;
+
+     //This method takes argument as Multipart file array because we are going to add multiple files.
+    @PostMapping(value = "/users", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE}, produces = "application/json")
+    public ResponseEntity saveUsers(@RequestParam(value = "files") MultipartFile[] files) throws Exception {
+        for (MultipartFile file : files) {
+            service.saveUsers(file);
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping(value = "/users", produces = "application/json")
+    public CompletableFuture<ResponseEntity> findAllUsers() {
+       return  service.findAllUsers().thenApply(ResponseEntity::ok);
+    }
+
+
+    //This method will split the task by multiple thread nd at end we will join them to return as response.Basically, we are performing three tasks at same time but we have only two threads.
+    @GetMapping(value = "/getUsersByThread", produces = "application/json")
+    public  ResponseEntity getUsers(){
+        CompletableFuture<List<User>> users1=service.findAllUsers();
+        CompletableFuture<List<User>> users2=service.findAllUsers();
+        CompletableFuture<List<User>> users3=service.findAllUsers();
+        CompletableFuture.allOf(users1,users2,users3).join();
+        return  ResponseEntity.status(HttpStatus.OK).build();
+    }
+}
+
+>> In application.yml file
+spring:
+  h2:
+    console:
+      enabled: true
+
+server:
+  port: 9191
+
+>> In main class,
+@SpringBootApplication
+public class SpringbootMultithreadingExampleApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringbootMultithreadingExampleApplication.class, args);
+	}
+
+}
+
+>> Run the application and go to POSTMAN, http://localhost:9191/users (POST)and click Body --> form-data and set key as files and choose csv file and choose one more key as files and choose csv file.Finally, send and get the status code 201.
+
+execute the GET API call to verify the record is inserted or not.
+http://localhost:9191/users - It shows all the records
+
+>> To verify the number of records from database - Go to browser and open http://localhost:9191/h2-console/. After that, once the connection established, go to USER_TBL and run it. To check the record count execute the query i.e.SELECT count(*) FROM USER_TBL. It will show 2000 because each csv file contains 1000 records.
+
+>> Go to console to verify the multithreading behaviour.
+
+>> No. of threads means it will take less time to complete whole activity.
+
+Springcloud Function i.e. @functional
+-------------------------------------
+>> It promotes the implementation of business logic via function.
+
+>> Decouple the development lifecycle of business logic from any specific runtime target so that the same code can run as web endpoint. We can simply expose our function as REST endpoint without having interaction with any kind of server or any kind of operating system.
+
+>> Spring cloud function is more helpful if we are using any cloud deployment in our application and specially it is more flexible with AWS.
+
+>> It enables spring boot features like auto configuration, dependency injecion on serverless providers.
+
+>> In spring cloud function we are going to play with four functional interfaces i.e. consumer, supplier, predicate and function.
+
+>> Create a springboot project having dependencies lombok, devtools, spring-cloud-function-compiler, spring-cloud-starter-function-web.
+
+>> Greenwich.SR2 is the cloud version we would be using.
+
+>>  In main class
+SpringCloudFunctionExampleApplication.java
+------------------------------------------
+@SpringBootApplication
+public class SpringCloudFunctionExampleApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringCloudFunctionExampleApplication.class, args);
+	}
+
+	//Function FI apply target and return the resource.Here, we reverse the input i.e. whatever input we give 
+	the method will reverse the string
+	@Bean
+	public Function<String, String> reverse() {
+		return (input) -> new StringBuilder(input).reverse().toString();
+	}
+
+	//Supplier FI always expects the return, so do have get() method without having method argument
+	@Bean
+	public Supplier<Book> getBook() {
+		return () -> new Book(101, "Core Java");
+	}
+
+	//
+	@Bean
+	public Consumer<String> printMessage() {
+		return (input) -> System.out.println(input);
+	}
+}
+
+Note - If we will add @Bean annotation then IOC container will instantiate this bean.We will access this using REST endpoint with the help of method name.
+
+>> Book.java
+   ---------
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class Book {
+	
+	private int id;
+	private String name;
+
+}
+
+>> Run application and then go to the command prompt where the project is located and execute the CURl URL.
+i.e. curl -H "Content-Type: text/plain" localhost:8080/reverse -d JavaTechie. With the method name reverse we are going to access this API which will behave like a REST endpoint.On executing 'curl -H "Content-Type: text/plain" localhost:8080/reverse -d JavaTechie' will reverse the string. The input that we passed here is javatechie which got reversed.
+
+Execute 'curl -H "Content-Type: text/plain" localhost:8080/rverse -d JavaTechie'
+
+>>  Similarly, we can check the second API which is getBook()
+
+Execute 'curl -H "Content-Type: application/json" localhost:8080/getBook - it will show the json response
+{"id":101, "name":"Core Java"}
+
+Here, we don't have any URL mapping but still we can able to access this function with the name of method.
+
+Execute 'curl -H "Content-Type: text/plain" localhost:8080/printMessage -d Welcome JavaTechie - While we go to console we can see input is getting printed in console.Here, printMessage() method we took the method  as consumer interface which contains method accept() which has void return type.So, that's why we print the input and can able to see the response.
+
+>> Another way of doing this. Similarly, if we create your own class and implements from any functional interface then the class name would act as URL.
+
+public class Test implements Function<String, String>{
+	
+	@Override
+	public String apply(String t) {
+		return "Serverless functional programming : example by "+t;
+	}
+
+}
+
+Go to cmd and the project location,
+
+Execute 'curl -H "Content-Type: text/plain" localhost:8080/test -d JavaTechie'
+
+Note - Where ever we use the @bean annotation we provide method name as URL. If we are customising your functional interface by implementing any function then we need to pass the class name as a URL.
+
+Ways To Create Springboot Project
+---------------------------------
+There are 4 ways to create springboot project.
+
+1. Create a maven project and add springboot starter dependencies. 
+
+2. Use spring initializr.
+
+3. Use IDE like STS(spring tool suit) - In this IDE, we have spring plugins.When we create a new project we do have springboot project option.This is a best way to create springboot project.
+
+4. Springboot command line interface.
+
+Enable Cross Origin Resource Sharing(CORS)
+------------------------------------------
+This concept is for security purpose where we can have fully control over application.We can add restrictions like who can access our application and who can't access. How we can add restrictions and on what basis we can apply restrictions on our API.
+
+We can one my-portal application which is accessible on port 8080.It can be accessible by multiple client with different URL i.e. http://localhost:9090 and http://localhost:9091. In this case, we can add restrictions in my-portal application and also we can apply restrictions to client as well. Adding restrictions on URL depends on three factors which is protocol(http), host(localhost), port(9090).We need to specify in my-portal application which URL it will allow.It means, assume in my-portal application it will only allow http://localhost:9090 request.So, any request coming in with different URL it will deny that request. That's what the CORS concept.This is very simple concept where we are just specifying the URL with which client can access our application.
+
+Create a my-portal application and expose REST API and after that will create a client and try to access it.
+
+>> Create a my-portal application of springboot version 2.1.4 having dependency as web and another myportal-client application having dependency as web and Thymeleaf. As fom myportal-client we are going to consume the my-portal using AJAX call.So, that's why we need Thymeleaf component. 
+
+>> In my-portal application, expose one REST endpoint with dummy string message.
+
+@SpringBootApplication
+@RestController
+/*@CrossOrigin(origins="*")*/
+public class MyPortalApplication {
+	
+	/*@CrossOrigin(origins="http://localhost:9090")*/
+	@GetMapping("/access")
+	public String greeting() {
+		return "Welcome to java techie portal";
+	}
+	
+	@Bean
+	public WebMvcConfigurer configure() {
+		return new WebMvcConfigurer() {
+			@Override
+			public void addCorsMappings(CorsRegistry registry) {
+		registry.addMapping("/*").allowedOrigins("http://localhost:9090");
+			}
+			
+		};
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(MyPortalApplication.class, args);
+	}
+
+}
+
+>> myportal-client we are going to access through the html AJAX call and that's why we return one view.
+
+@SpringBootApplication
+@Controller
+public class MyPortalClientApplication {
+
+	@GetMapping("/")
+	public String home() {
+		return "home";
+	}
+
+	/*
+	 * 'http://localhost:8080/access' from origin 'http://localhost:9090' has been
+	 * blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on
+	 * the requested resource.
+	 */
+
+	public static void main(String[] args) {
+		SpringApplication.run(MyPortalClientApplication.class, args);
+	}
+
+}
+
+>> Let's create html page i.e. home.html. Create a button and by clicking on that button we will get the response by invoking this portal.js AJAX call to our my-portal service.
+
+home.html
+---------
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="ISO-8859-1" />
+<title>Business user Application</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet"
+	href="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" />
+<script
+	src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script
+	src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.0/umd/popper.min.js"></script>
+<script
+	src="https://maxcdn.bootstrapcdn.com/bootstrap/4.1.0/js/bootstrap.min.js"></script>
+<script src="/portal.js"></script>
+</head>
+<body>
+	<br />
+	<br />
+	<div class="container" align="center">
+		<button id="accessportal" type="button" class="btn btn-primary">Access
+			My portal</button>
+	</div>
+	<h1 id="apiResponse"></h1>
+</body>
+</html>
+
+>> Create javascript AJAX call i.e.portal.js where we are invoking our my-portal service which we mapped in my-portal application.And, accessportal is the response id.
+
+portal.js
+---------
+GET: $(document).ready(
+		function() {
+
+			// GET REQUEST
+			$("#accessportal").click(function(event) {
+				event.preventDefault();
+				ajaxGet();
+			});
+
+			// DO GET
+			function ajaxGet() {
+				$.ajax({
+					url : "http://localhost:8080/access",
+					success : function(result) {
+						$("#apiResponse").html(result);
+					}
+				});
+			}
+		})
+
+>> Change my-portal client and modify port i.e. server.port=9090.
+
+>> Run both my-portal abd myportal-client applications. Moreover, my-portal application executes on 8080 port and myportal-client executes on 9090 port.
+
+>> Open, http://localhost:9090 - it shows Access My portal button on the page. When we will click Access My portal button we will get the error. Because, http://localhost:8080/access from origin http://localhost:9090/ has been blocked by CORS policy. No Access-Control-Allow-Origin header is present on the requested resource.So, from http://localhost:9090 it is not allowing to access our http://localhost:8080/access.This is what our default behaviour of browser as we are doing the AJAX call.
+
+>> In order to enable CORS policy, we need to provide access to the myportal application i.e.http://localhost:8080/access. Need to enable CORS policy, @CrossOrigin(origins="http://localhost:9090")
+
+>> Restart the application again and click Access My portal button on http://localhost:9090 then we are able to get desired result.
+
+>> Note - Apply CORS policy in class level, so that whatever method present in controller it can be handled by global annotation.
+
+>> If we want to allow for all the origin i.e. any number of client URLs can access it then we need to annotate with @CrossOrigin(origins="*")
+
+>> If my-portal application do have multiple controller then without using CORS policy in class level or method level we need to write it with @bean annotation. 
+
+	@Bean
+	public WebMvcConfigurer configure() {
+		return new WebMvcConfigurer() {
+			@Override
+			public void addCorsMappings(CorsRegistry registry) {
+		registry.addMapping("/*").allowedOrigins("http://localhost:9090");
+			}
+			
+		};
+	}
+
+>> We can apply CORS policy in method level. If we have multiple method in a controller then apply CORS policy in class level. And, if we have multiple controller in our application then you can make it global across our application, so that's why we created this @Bean.
+
+>> Suppose, we implemented a product and this product is going to be used by a specific client then in this case we need CORS policy.
+
+Spring Boot Application Work Internally
+---------------------------------------
+In Spring Boot framework we are just using the predefined JARs developed by spring boot developer.
+
+
+Logging - Spring AOP | @Around Advice | Centralized logging
+-----------------------------------------------------------
+Logging mechanism is one of the crucial part/featues of any application in real time developement. Because using log file a developer can track the root cause of any failure and it will save bunch of time for a devloper.The way we will write the log statements in controller the same way we will write log statements in service, in your repository whatever the layer we are using in our application.In real time, we need to write log statements in each and every layer, so that easily we can track the flow of our application using this log statements.However, sometimes we will find there are more log statements in our codes as compared with actual business codes. For ex - we have one line business code in which we will add the product in our service and service will call the database.And, for that we wrote two lines of log statements.
+
+In this scenerio, we can think how we need to decouple log statements from application. For this, we need to use spring AOP.
+
+AOP stands for aspect oriented programming language which helps us to segregate our business logic to secondary logic.Here, the log statements is our secondary logic. Actually, we are writing log statements only to track our application flow. How we can segregate primary and secondary logic using spring AOP.In this case, we can centralized our logging mechanism i.e. instead of writing codes in different layer we can write log statements in one layer so that the logging feature can be applicable for application.
+
+>> In a spring boot application, create a new package called advice and create a class LoggingAdvice and add spring AOP dependency(we dont need to mention version because it will be managed by spring auto configuration).
+
+POM.xml
+-------
+<!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-aop -->
+<dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-aop</artifactId>
+</dependency>
+
+>> ProductController.java
+   ----------------------
+@RestController
+public class ProductController {
+
+	@Autowired
+	private ProductService service;
+
+
+	@PostMapping("/save")
+	public List<Product> saveProducts(@RequestBody List<Product> products) {
+
+		List<Product> pList = service.addProduct(products);
+
+		return pList;
+	}
+
+	@GetMapping("/findProducts")
+	public List<Product> getProducts() {
+		
+		List<Product> products = service.findAllProducts();
+	
+		return products;
+	}
+
+}
+
+LoggingAdvice.java
+------------------
+@Aspect
+@Component
+public class LoggingAdvice {
+
+	Logger log = LoggerFactory.getLogger(LoggingAdvice.class);
+	
+	@Pointcut(value="execution(* com.javatechie.spring.aop.api.*.*.*(..) )")
+	public void myPointcut() {
+		
+	}
+	
+	@Around("myPointcut()")
+	public Object applicationLogger(ProceedingJoinPoint pjp) throws Throwable {
+		ObjectMapper mapper = new ObjectMapper();
+		String methodName = pjp.getSignature().getName();
+		String className = pjp.getTarget().getClass().toString();
+		Object[] array = pjp.getArgs();
+		log.info("method invoked " + className + " : " + methodName + "()" + "arguments : "
+				+ mapper.writeValueAsString(array)); // before method is invoked
+		Object object = pjp.proceed();
+		log.info(className + " : " + methodName + "()" + "Response : "
+				+ mapper.writeValueAsString(object));
+		return object;
+	}
+
+}
+
+Here, ProceedingJointPoint is coming from AOP.Using this, we can track method details like what are the input parameters coming to our method we can track this by ProceedingJointPoint. As this ProceedingJointPoint is internally using the reflection API, so using that we can get which method it is calling and which class it is invoking. By using Object[] array = pjp.getArgs(); we can track all inputs given to any particlar method.In order to convert array or any object in json format we are using ObjectMapper.In the above code, mapper.writeValueAsString(array) - just print this array in json format.
+
+Suppose, we are invoking saveProducts(@RequestBody List<Product> products) method of Controller. So, whatever the input we are getting and the sepcific class it is invoking and the method name it will display with this 
+og.info(className + " : " + methodName + "()" + "Response : "
+				+ mapper.writeValueAsString(object));
+
+We want to capture the response as well. That is what the method executes what exactly the response it is giving that also we need to capture in our logs.This is what we are going to implements AROUND ADVICE which is the combination of BEFORE ADVICE + AFTER RETURNING ADVICE.So, before executes this saveProducts() we want to track the inputs and after executes this saveProducts() we want to track the response.That's why we need to implement AROUND ADVICE in our log statements.
+
+log.info(className + " : " + methodName + "()" + "Response : "
+				+ mapper.writeValueAsString(object));
+This will help as BEFORE ADVICE. Once this code Object object = pjp.proceed(); is invoked then only whatever response we are getting from this saveProducts() method call that can be captured.
+
+@Around("myPointcut()") - the role of pointcut will inform to sping AOP who will be the actual target and where we are going to implement logging mechanism.
+
+We need to specify pointcut as expression, so that spring AOP can understand ok this is the path where we need to implement this customized logging statements.
+@Pointcut(value="execution(* com.javatechie.spring.aop.api.*.*.*(..) )")
+	public void myPointcut() {
+		
+	}
+* mark indicates any package, any class, any method
+
+>> Suppose, we need to implement only for ProductController. So, sepcify below code in LoggingAdvice class.
+
+@Pointcut(value="execution(* com.javatechie.spring.aop.api.controller.ProductController.saveProducts(..) )")
+	public void myPointcut() {
+		
+	}
+
+Spring AOP - Custom annotation to log method execution time | @TrackExecutionTime
+---------------------------------------------------------------------------------
+Performance of code enhancement. Suppose we have a method and want to evaluate how much time the method is taking to execute.
+
+ProductService.java
+-------------------
+@Service
+public class ProductService {
+
+	@Autowired
+	private ProductRepository repository;
+
+	@PostConstruct
+	public void initDB() {
+		List<Product> list=new ArrayList<>();
+		for(int i=1;i<=10000;i++) {
+			list.add(new Product(i, "product"+i, new Random().nextInt(2000)));
+		}
+		repository.saveAll(list);
+	}
+	
+	@TrackExecutionTime
+	public List<Product> addProduct(List<Product> products) {
+		return repository.saveAll(products);
+	}
+
+	@TrackExecutionTime
+	public List<Product> findAllProducts() {
+		return repository.findAll();
+	}
+
+}
+
+At the time of application load we are creating 10,000 product object and we are persisting them in database. We have a method called findAllProducts() which fetch list of product object from database.So, we want to track execution time for this findAllProducts() method. We just want to know how much time this method is taking to complete his execution.
+
+public List<Product> findAllProducts() {
+long startTime = System.currentTimeMillis();
+List<Product> products = repository.findAll();
+long endTime = System.currentTimeMillis();
+SOP(endTime - startTime);	
+}
+
+This is for one method. Again we need to copy paste this piece of code across all the methods in different components of our application which is not a feasible solution. 
+
+We will create custom annotation who will handle this execution time tracking.This annotation will help us to evaluate execution time for a particular method.
+
+We are going to use spring AOP AROUND ADVICE.
+
+>> Create a class ExecutionTimeTrackerAdvice in a separate package and add spring AOP dependency in application.
+
+ExecutionTimeTrackerAdvice.java
+-------------------------------
+@Aspect
+@Component
+public class ExecutionTimeTrackerAdvice {
+	
+	Logger logger=LoggerFactory.getLogger(ExecutionTimeTrackerAdvice.class);
+	
+	@Around("@annotation(com.javatechie.spring.aop.api.advice.TrackExecutionTime)")
+	public Object trackTime(ProceedingJoinPoint pjp) throws Throwable {
+		long stratTime=System.currentTimeMillis();
+		Object obj=pjp.proceed();
+		long endTime=System.currentTimeMillis();
+		logger.info("Method name"+pjp.getSignature()+" time taken to execute : "+(endTime-stratTime));
+		return obj;
+	}
+
+}
+
+Which ever method will use this annotation this piece of code will execute of this trackTime() method.
+
+>> Create a Annotation TrackExecutionTime which is our custom annotation.Here, we specify @Target annotation which indicates on which level you will apply this annotation.We want to specify this annotation at method level.
+
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface TrackExecutionTime {
+
+}
+
+Here, @Retention means whether we need apply this at compile time or run time. Go to ExecutionTimeTrackerAdvice, and give the fully qualified path of this Retention annotation to our AROUND ADVICE 
+
+@Around("@annotation(com.javatechie.spring.aop.api.advice.TrackExecutionTime)")
+
+Now, where ever we will use TrackExecutionTime annotation the control will come to the below ADVICE and this piece of code will execute.Thats why we specify the fully specified path of the annotation.
+
+@Around("@annotation(com.javatechie.spring.aop.api.advice.TrackExecutionTime)")
+	public Object trackTime(ProceedingJoinPoint pjp) throws Throwable {
+		long stratTime=System.currentTimeMillis();
+		Object obj=pjp.proceed();
+		long endTime=System.currentTimeMillis();
+		logger.info("Method name"+pjp.getSignature()+" time taken to execute : "+(endTime-stratTime));
+		return obj;
+	}
+
+
+>> Use this @annotation at method level where we want to track our execution time. Lets, say we want to track the execution time of findAllProducts() method of ProductService class.In this case, we use our own annotation which we created i.e. @TrackExecutionTime over the method.
+
+	@TrackExecutionTime
+	public List<Product> findAllProducts() {
+		return repository.findAll();
+	}
+
+Once the request comes to the findAllProducts(), then it will go to ExecutionTimeTrackerAdvice.java and execute the below piece of code based on @TrackExecutionTime on findAllProducts().
+
+@Around("@annotation(com.javatechie.spring.aop.api.advice.TrackExecutionTime)")
+	public Object trackTime(ProceedingJoinPoint pjp) throws Throwable {
+		long stratTime=System.currentTimeMillis();
+		Object obj=pjp.proceed();
+		long endTime=System.currentTimeMillis();
+		logger.info("Method name"+pjp.getSignature()+" time taken to execute : "+(endTime-stratTime));
+		return obj;
+	}
+
+Here, it will evaluate the start time and once we call the pjp.proceed() method it will actually call the target method. We are invoking the endTime and substracting endTime and startTime both to get our actual time. It will return in milli second.
+
+>> Lets, run this application from the main class and application UP on port 8080. Go to Rest endpoint i.e. /findProducts which will invoke the findAllProducts() method.
+
+Go to browser, http://localhost:8080/findProducts - It will show 10,000 records in the browser. Go to IDE console and see the ProductService.findAllProducts() time taken to execute : 122 milli seconds
+
+>> Similarly, we want to track the execution time for the addProduct() method then we can do by annotation @TrackExecutionTime
+
+	@TrackExecutionTime
+	public List<Product> addProduct(List<Product> products) {
+		return repository.saveAll(products);
+	}
+
+Go to POSTMAN, http://localhost:8080/save (POST). We are going to send the below two list of product object.It got saved.
+
+[
+{
+"id":101,
+"name":"mobile",
+"price": 15000
+},
+{
+"id":104,
+"name":"sunglass",
+"price": 3999
+}
+]
+
+In the IDE console, ProductService.addProduct(List) time taken to execute : 11 ms
+
+>> When ever we want to track the execution time of any particular method then use this annotation i.e. @TrackExecutionTime on the top of that method.
+
+Spring Boot Job Scheduler
+-------------------------
+How to run a job in periodical manner in spring scheduler concept. In this use case, in each 5 secs it will add data/dummy object to DB for 1st scheduler , in every 15 secs it will retrieve data from DB for 2nd scheduler.
+
+>> Create a springboot application having dependencies web, lombok, jpa, DevTools, H2.
+
+>> Create package called model, DAO, service.
+
+>> Create User.java in model package.
+
+User.java
+---------
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@ToString
+@Entity
+public class User {
+	@Id
+	@GeneratedValue
+	private Integer id;
+	private String name;
+
+}
+
+>> In DAO package, create UserDao class
+
+UserDao.java
+------------
+public interface UserDao extends JpaRepository<User, Integer>{
+
+}In service package, create the scheduler class i.e. UserService class
+
+UserService.java
+----------------
+@Service
+public class UserService {
+	@Autowired
+	private UserDao dao;
+
+	Logger log = LoggerFactory.getLogger(UserService.class);
+
+	// schedule a job to add object in DB (Every 5 sec)
+	@Scheduled(fixedRate = 5000)
+	public void add2DBJob() {
+		User user = new User();
+		user.setName("user" + new Random().nextInt(374483));
+		dao.save(user);
+		System.out.println("add service call in " + new Date().toString());
+	}
+
+	@Scheduled(cron = "0/15 * * * * *")
+	public void fetchDBJob() {
+		List<User> users = dao.findAll();
+		System.out.println("fetch service call in " + new Date().toString());
+		System.out.println("no of record fetched : " + users.size());
+		log.info("users : {}", users);
+	}
+
+}
+
+Here, * - every sec, * every min, * every hour, * every day. Like this, we need to specify the cron expression.
+
+>> @EnableSchedulig in the main class of the application.
+
+SpringBootSchedulerApplication.java
+------------------------------------
+@SpringBootApplication
+@EnableScheduling
+public class SpringBootSchedulerApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringBootSchedulerApplication.class, args);
+	}
+}
+
+ 
+Now, just run this application and can check in the IDE console that in every 5 secs it is adding objects and in every 15 secs it is fetching records.In cron expression it will run unlimited times we don't specify any end time period.This is the way we can schedule a job.
+
+In real time, we are getting mail from bank provider pending amount or credit card bill. These things are automated using the this schedule concept but that is the bath schedule job.
+
+
+Note 
+----
+Harshada Raut
+Harshada Raut
+6 days ago
+I want to run call my method from controller daily on 3 pm  for 1 hour what should be my cron value
+
+1
+
+
+Java Techie
+Java Techie
+6 days ago
+Please check in crontab.com 
+
+
+Spring Boot With External Tomcat Deployment
+-------------------------------------------
+>> Create a springboot project having spring web as dependency and packaging as WAR.
+
+>> As we have applied packaging as WAR, so springboot will add one springboot servlet initializer class. This class is autogenerated which override the configure() method.
+
+servletInitializer.java
+-----------------------
+package com.javatechie.spring.test;
+
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
+
+public class ServletInitializer extends SpringBootServletInitializer {
+
+	@Override
+	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
+		return application.sources(TestApplication.class);
+	}
+
+}
+
+TestApplication.java
+--------------------
+package com.javatechie.spring.test;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@SpringBootApplication
+@RestController
+public class TestApplication {
+
+	@GetMapping("/test")
+	public String test() {
+		return "Application Deployed";
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(TestApplication.class, args);
+	}
+}
+
+>> In POM.xml, spring-boot-starter-tomcat dependency added by the springboot and see the packaging as war.In properties section we need to add one element attribute
+
+<start-class>package.classname</start-class>
+
+Whenever we have this TestApplication class we need to specify the package with class name in the <start-class> element. 
+
+>> Implement a endpoint in TestApplication class as mentioned above in order to check tomcat server is working fine or not.
+
+>> To generate WAR file, we need to give maven install command.Before that, first update the project i.e. Update Maven Project as we added a tag start-class.
+
+Then, the moment we run maven-install we see check after a while the build is success.
+
+>> Now, copy the WAR and deployed it in tomcat.Go to Servers, right click on Tomcat 8 version and click on "Add and Remove" application Available (test(test-0.0.1-SNAPSHOT)) -------> Configured (test(test-0.0.1-SNAPSHOT)).
+								Add						
+
+--> Click Finish.
+
+>> Now, start external tomcat and hit the endpoint URL in the browser i.e. http://localhost:8080/test/test and get the response as Application Deployed.
+
+In this way, microservices can be added to any external server.
+
+Spring MVC Exceptional Handling
+-------------------------------
+>> Create a springboot application having dependencies as web, JPA, lombok, H2(temporary database), DevTools(restart server automatically if we are doing any change).
+
+>> Create packages like controller, dao, model, service, api.
+
+>> In model package, create Order class
+
+Order.java
+----------
+package com.javatechie.spring.exp.handle.api.model;
+
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = "ORDER_TB")
+public class Order {
+	@Id
+	private int id;
+	private String name;
+	private String catagory;
+	private double amount;
+}
+
+>> In DAO package, create OrderDAO class
+
+OrderDAO.java
+-------------
+package com.javatechie.spring.exp.handle.api.dao;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.javatechie.spring.exp.handle.api.model.Order;
+
+public interface OrderDAO extends JpaRepository<Order, Integer>{
+
+	Order findByName(String name);
+
+}
+
+>> In service package, create OrderService class. Based on order name we will fetch the order price.Added first some dummy order objects in database.
+
+OrderService.java
+-----------------
+package com.javatechie.spring.exp.handle.api.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.PostConstruct;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.javatechie.spring.exp.handle.api.dao.OrderDAO;
+import com.javatechie.spring.exp.handle.api.exception.OrderServiceException;
+import com.javatechie.spring.exp.handle.api.model.Order;
+
+@Service
+public class OrderService {
+	@Autowired
+	private OrderDAO dao;
+
+	@PostConstruct
+	public void addOrder2DB() {
+		List<Order> orders = new ArrayList<>();
+		orders.add(new Order(876, "Mobile", "Electronics", 8000)); //dummy order object
+		orders.add(new Order(806, "Bike", "Veichlie", 90000)); //dummy order object
+		dao.save(orders);
+	}
+
+	//By calling dao we will get the order object and based on that order we will get the amount. 
+	public double getPrice(String productName) throws OrderServiceException {
+		Order order = null;
+		double amount = 0;
+		try {
+			order = dao.findByName(productName);
+			amount = order.getAmount();
+		} catch (Exception e) {
+			throw new OrderServiceException("order not found with product : " + productName);
+		}
+		return amount;
+	}
+}
+
+Here, we are appliying @PostConstruct annotation because we want the data should persist when our application is UP. It is same like init method in xml approach.Moreover, dao.findByName(productName) we can get data from database by method level itself without writing query.It will give the product object. From product, it will return the order.getAmount().
+
+>> In controller package, create class OrderController
+
+OrderController.java
+--------------------
+package com.javatechie.spring.exp.handle.api.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.javatechie.spring.exp.handle.api.exception.OrderServiceException;
+import com.javatechie.spring.exp.handle.api.service.OrderService;
+
+@RestController
+public class OrderController {
+	@Autowired
+	private OrderService service;
+
+	@GetMapping("/getPrice/{productName}")
+	public String getOrderPrice(@PathVariable String productName) throws OrderServiceException {
+		double amount = service.getPrice(productName);
+		return "amount for product " + productName + " is " + amount;
+	}
+}
+
+Here, by using the @PathVariable annotation we pass the input parameter as part of request URL.
+
+
+>> Now, run the application and test application on POSTMAN i.e. http://localhost:8080/getPrice/productName
+ http://localhost:8080/getPrice/Mobile
+
+o/p - amount for product mobile is 8000.00
+
+http://localhost:8080/getPrice/Bike
+
+o/p - amount for product Bike is 9000.00
+
+>> Suppose, we did some mistake in input parameters lets say Bikes i.e.http://localhost:8080/getPrice/Bikes. So, based on Bikes we don't have object in the database.In Service class, while we are calling 
+
+			order = dao.findByName(productName);
+			amount = order.getAmount();
+
+order will get null and null.getAmount() will give NullPointerException. It is difficult to understand the root cause both for us and end users.In this case, we should go for exceptional handling.
+
+>> Let's create custom exception class and for this in exception package, create OrderServiceException 
+
+OrderServiceException.java
+--------------------------
+package com.javatechie.spring.exp.handle.api.exception;
+
+public class OrderServiceException extends Exception {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 4227171665478076830L;
+
+	public OrderServiceException(String message) {
+		super(message);
+		// TODO Auto-generated constructor stub
+	}
+
+}
+
+
+Here, added default constructor and String as argument because whatever message will throw that we can get as part of response when we will call exception.getMessage().
+
+>> Handle the exception in the service class i.e OrderService.java. Remember, always we will write invoke logic in try block so that we can avoid exception issue. 
+
+	//By calling dao we will get the order object and based on that order we will get the amount. 
+	public double getPrice(String productName) throws OrderServiceException {
+		Order order = null;
+		double amount = 0;
+		try {
+			order = dao.findByName(productName);
+			amount = order.getAmount();
+		} catch (Exception e) {
+			throw new OrderServiceException("order not found with product : " + productName);
+		}
+		return amount;
+	}
+
+Here, amount = order.getAmount() is throwing the exception, so we keep it in the try block.This is the checked exception and we are throwing it from catch block so we handle it using throws.In controller, as method caller we are also handling the same, so we are simply throwing it.
+
+@GetMapping("/getPrice/{productName}")
+	public String getOrderPrice(@PathVariable String productName) throws OrderServiceException {
+		double amount = service.getPrice(productName);
+		return "amount for product " + productName + " is " + amount;
+	}
+
+
+>> In controller package, create ExceptionAdvice class. In controller class i.e. OrderController class when exception is throwing instead of executing those lines it goes to one more ADVICE class there it will map the exception details and it will give as part of response.
+
+ExceptionAdvice.java
+--------------------
+package com.javatechie.spring.exp.handle.api.controller;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import com.javatechie.spring.exp.handle.api.exception.OrderServiceException;
+import com.javatechie.spring.exp.handle.api.model.OrderError;
+
+@ControllerAdvice
+public class ExceptionAdvice {
+
+	@ExceptionHandler(OrderServiceException.class)
+	public ResponseEntity<OrderError> mapException(OrderServiceException ex) {
+		OrderError error = new OrderError(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage());
+		return new ResponseEntity<OrderError>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+	}
+
+}
+
+
+>> In model package, create OrderError class to show the error code with error message. The ResponseEntity() method will always return order error. Here, HttpStatus.INTERNAL_SERVER_ERROR.value() is the error code and ex.getMessage() is the error message.Error message is the message which we is returning from service.
+
+OrderError.java
+---------------
+package com.javatechie.spring.exp.handle.api.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
+public class OrderError {
+	private int errorCode;
+	private String errorMessage;
+
+} 
+
+>> Run application and test http://localhost:8080/getPrice/Bikes - it shows the below json error message 
+
+{
+"errorCode":500,
+"errorMessage":"Order not found with product : Bikes"
+
+This is the way we can mapped the exception code with exception message as part of our response if end user is giving the wrong input.
+
+}
+
+HTTP to HTTPS using SSL and SpringBoot
+--------------------------------------
+HTTP protocol is not secure and vulnerable whenever we are sending data from web browser to web server. In order to encrypt those data and to provide security we should use HTTPS protocol. Hence, to secure it we need to create certificate for that. To convert HTTP to HTTPS we need to use cryptographic protocol. Cryptographic protocol is nothing but SSL or TLS. 
+
+SSL - Secure socket layer and TLS - Transport layer security.
+
+Here, we will use SSL and through SSL we are going to create certificate. For this, we need to configure few things like keystore, types of keystore.
+
+To achieve this we need to use public key infrastructure where it can be accessed by multiple web browser, so we should use public key here. 
+
+>> Create a springboot application and having spring web as dependency.
+
+>> In RestController class, implemented one REST endpoint.
+
+SpringHttpsApplication.java
+---------------------------
+package com.javatechie.spring.https.api;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@SpringBootApplication
+@RestController
+public class SpringHttpsApplication {
+
+	@GetMapping("/getData")
+	public String getMessage() {
+		return "Accessed by HTTPS protocol";
+	}
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringHttpsApplication.class, args);
+	}
+}
+
+>> Now, configure using the application.yml file
+
+application.yml
+---------------
+server:
+  ssl:
+    key-alias: spring-https
+    key-store: classpath:javatechie.jks
+    key-store-type: JKS
+    key-pass: pass
+    
+  port: 7777  
+
+Here, JKS is the file extension which contains certificate details. port we have configured is 7777 but the default port of HTTPS is 443.
+
+
+>> Generate self signed certificate with public key - Go to command prompt, 
+
+Execute the below command
+
+keytool -genkey -alias spring-https -storetype JKS -keyalg RSA -keysize 2048 -validity 365 -keystore javatechie.jks
+
+Enter keystore pass: pass (this is used in the configuration file)
+Re-enter new pass: pass
+
+What is your first and last name ? - Give any first and last name
+
+What is the name of your organizational unit ? - Technology (anyname)
+
+What is the name of your organization ? - Any name
+
+What is the name of your city and locality ? - Any name
+
+What is the name of your state and province ? - Any state name
+
+What is the two-letter country code for this unit - IN
+
+Is CN-You, ------ corrcet ? - Yes
+
+Enter the key pass for <spring-https> - pass which we provided in the configuration file is same. So, just press enter.
+
+Now, JKS file is generated with javatechie.jks , just search that in windows. Just copy the javatechie.jks file in project directory under resources folder.And, the file is written in bytecodes.
+
+>> Run application and just after a while application is UP on port 7777 with end point URL mapped i.e. /getData.
+
+In the browser, http://localhost:7777/getData - we are accessing through http now and it shows Bad Request. This combination of host and port requires TLS i.e. it needs certificate.
+
+So, https://localhost:7777/getData - this is the unauthorized URL and click Advanced and we will get Accessed by HTTPS protocol as response.
+
+In this way, we can convert HTTP to HTTPS for secure communication between from web browser to web server.
+
+Springboot with Swagger
+-----------------------
+Documentation of REST APIs. It is useful for quick UI integration which is the main purpose of Swagger. It is also very useful as in case of better productivity. Suppose a new resource join in any project then the new resource can easily understand the flow of the application by referring this Swagger documentation.The new resource can identify the request URL and the model which is going to persist/transfer over the network based on this documentation he can easily understand.
+
+>> Create a springboot application having dependencies like web, H2, DevTools(for every change we don't need to restart server), JPA, lombok.
+
+>> Create the required packages i.e. service, controller, dao, model.
+
+>> In model package, create Book class
+
+Book.java
+---------
+package com.javatechie.spring.swagger.api.model;
+
+import java.io.Serializable;
+
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+@Entity
+@Table
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+public class Book implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -1670893016517855654L;
+	@Id
+	@GeneratedValue
+	@ApiModelProperty(value = "autogenerated id")
+	private int bookId;
+	@ApiModelProperty(value = "this is the book name")
+	private String bookName;
+	@ApiModelProperty(value = "this is book price")
+	private double price;
+}
+
+>> In dao package, BookRepository class is created which extends JpaRepository
+
+BookRepository.java
+-------------------
+package com.javatechie.spring.swagger.api.dao;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.javatechie.spring.swagger.api.model.Book;
+
+public interface BookRepository extends JpaRepository<Book, Integer> {
+
+}
+
+>> In service package, BookService class is created
+
+BookService.java
+----------------
+package com.javatechie.spring.swagger.api.service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.javatechie.spring.swagger.api.dao.BookRepository;
+import com.javatechie.spring.swagger.api.model.Book;
+
+@Service
+public class BookService {
+	@Autowired
+	private BookRepository repository;
+
+	public String saveBook(Book book) {
+		repository.save(book);
+		return "book save dwith id " + book.getBookId();
+	}
+
+	public Book getBook(int bookId) {
+		return repository.findOne(bookId);
+	}
+
+	public List<Book> removeBook(int bookId) {
+		repository.delete(bookId);
+		return repository.findAll();
+	}
+}
+
+
+>> In controller package, create Bookcontroller class
+
+BookController.java
+-------------------
+package com.javatechie.spring.swagger.api.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.javatechie.spring.swagger.api.model.Book;
+import com.javatechie.spring.swagger.api.service.BookService;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+
+@RestController
+@RequestMapping("/book")
+@Api(value = "Book Service", description = "My Book Store")
+public class BookController {
+
+	@Autowired
+	private BookService service;
+
+	@PostMapping("/save")
+	@ApiOperation(value = "store book api")
+	public String saveBook(@RequestBody Book book) {
+		return service.saveBook(book);
+	}
+
+	@ApiOperation(value = "search book api")
+	@GetMapping("/searchBook/{bookId}")
+	public Book getBook(@PathVariable int bookId) {
+		return service.getBook(bookId);
+	}
+
+	@DeleteMapping("/deleteBook/{bookId}")
+	public List<Book> deleteBook(@PathVariable int bookId) {
+		return service.removeBook(bookId);
+
+	}
+}
+
+>> In POM.xml, add below Swagger related dependencies
+
+		<dependency>
+			<groupId>io.springfox</groupId>
+			<artifactId>springfox-swagger2</artifactId>
+			<version>2.4.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>io.springfox</groupId>
+			<artifactId>springfox-swagger-ui</artifactId>
+			<version>2.4.0</version>
+		</dependency>
+
+>> In config package, we need to write Swagger configuartion details
+
+BookConfig.java
+---------------
+package com.javatechie.spring.swagger.api.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import springfox.documentation.builders.ApiInfoBuilder;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+import static springfox.documentation.builders.PathSelectors.regex;
+
+@Configuration
+@EnableSwagger2
+public class BookConfig {
+	@Bean
+	public Docket postsApi() {
+		return new Docket(DocumentationType.SWAGGER_2).groupName("Java Techie").apiInfo(apiInfo()).select()
+				.paths(regex("/book.*")).build();
+	}
+
+	private ApiInfo apiInfo() {
+		return new ApiInfoBuilder().title("Book Service")
+				.description("Sample Documentation Generateed Using SWAGGER2 for our Book Rest API")
+				.termsOfServiceUrl("https://www.youtube.com/channel/UCORuRdpN2QTCKnsuEaeK-kQ")
+				.license("Java_Gyan_Mantra License")
+				.licenseUrl("https://www.youtube.com/channel/UCORuRdpN2QTCKnsuEaeK-kQ").version("1.0").build();
+	}
+}
+
+Here, the Docket which is one class provided by spring framework to inform the swagger that we want documentation of type Swagger 2, mention group name and the root url, Specify the root url i.e for one controller. Now, we enable Swagger.
+
+>> Run the application and application runs on port 8080. In order to test Swagger, open Swagger URL in the browser i.e. http://localhost:8080/swagger-ui.html. It will show the Book Service which we mentioned in our service class. Moreover, while we test REST API in POSTMAN, we can do same testing in Swagger as well.
+
+In post, /book/save add parameter 
+{
+"bookName":"Jokes",
+"price": 235
+}
+
+After that, click Try it out and will get book save with id 1.Here the id is auto generated.
+
+

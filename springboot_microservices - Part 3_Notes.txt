@@ -1,0 +1,266 @@
+>> The @Value annotation in spring is essentially way to get values from property files in springboot applications.
+
+@RestController
+public class GreetingController{
+
+	private String greetingMessage;
+	
+	@Value("${my.greeting}") --> get the value from property file
+	private String greetingMessage;
+
+	@Value("${my.greeting: default value}") --> get default value as value if my.greeting won't available in property file
+	private String greetingMessage;
+	
+	@Value("${my.list.values}")
+	private List<String> listValues; --> Instantiate the list and assign it to listValues field.
+
+	@Value("some static message")
+	private String staticMessage;
+
+	@Value("#{${dbValues}}") --> # treat does treat curly braces after it as a spring expression language and evaluated and assigned to dbValue property.This is SPEL.We can call methods and access properties of other beans right here.
+	private Map<String, String> dbvalue;
+	
+	@GetMapping("/greeting")
+	public String greeting(){
+		return greetingMessage + staticMessage + listValues;
+	}
+} 
+
+In application.properties, my.greeting=Hello World , my.list.values=One,Two,Three
+dbValues={connectionString: 'http://__',give user name: 'foo', pass: 'pass'} --> key,value pair
+We are getting @Value property is just a String.
+Here, we are assigning a static value i.e.some static message to staticMessage field. 
+
+>> Configuration Properties :- 
+
+In application.properties file, 
+------------------------------
+#Database connection properties
+
+Create a class
+--------------
+This class should contain all the values that have these properties.
+/**
+ * @ConfiguartionProperties("db") - Its going to look for all the properties start with db.Anything,
+ * start with "db." its going to look for all those properties.And, then any of those properties matches
+ * with the member variables its gonna actually takes those values create a new instance of DbSettings
+ * class and inject those values to these corresponding member variables automatically.
+ *
+ * @Configuration - It knows to create this class DbSettings as bean.
+ */
+
+@Configuration
+@ConfigurationProperties("db")
+public class DbSettings {
+
+    private String connection;
+    private String host;
+    private int port;
+
+    public String getConnection() {
+        return connection;
+    }
+
+    public void setConnection(String connection) {
+        this.connection = connection;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+}
+
+In controller,
+
+@RestController
+public class GreetingController{
+
+	private String greetingMessage;
+	
+	@Value("${my.greeting}") --> get the value from property file
+	private String greetingMessage;
+
+	@Value("${my.greeting: default value}") --> get default value as value if my.greeting won't available in property file
+	private String greetingMessage;
+	
+	@Value("${my.list.values}")
+	private List<String> listValues; --> Instantiate the list and assign it to listValues field.
+
+	@Value("some static message")
+	private String staticMessage;
+
+	@Value("#{${dbValues}}") --> # treat does treat curly braces after it as a spring expression language and evaluated and assigned to dbValue property.This is SPEL.We can call methods and access properties of other beans right here.
+	private Map<String, String> dbvalue;
+
+	@Autowired --> Get access to all those values in one shot over here
+	private DbSettings dbSettings;
+	
+	public GreetingController(){
+
+	}
+
+	@GetMapping("/greeting")
+	public String greeting(){
+		return dbSettings.getConnection() + dbSettings.getHost();
+	}
+} 
+
+Now, when you start your start your server, it will fetch the values from the property file on browser.
+
+Note - There are two ways to get property values from your properties file into your java code.
+1. @Value annotation and 2. @Autowired annotation configuration beans.
+
+>> Where and why using configuration bean
+
+--> If we are gonna group values bundled to one java instance. That one reason we use configuration properties.The second reason is that the properties ends up as spring bean.Suppose, there are multiple properties that would be use in multiple location of code base structure like database connection.In that situation, there is benefit of using configuration properties and having this be a spring bean because we can just essentially autowired that bean, rather than same @Value will be using in multiple different places.
+
+>> Where and why using @Value
+
+--> If there is a single value in the property file.
+
+>> Acuator :-
+
+Add the dependency, "spring-boot-starter-acuator" in POM.xml file.Springboot acuator does not expose all the end points automatically because there are sensitive information.In this case, we need to tell springboot application  that we are okay with exposing sensitive information.But, do this carefully in production environment.This is mainly used for testing purpose.
+
+Go to, property file and add
+management.endpoints.web.exposure.include=*(expose all endpoints that acuator provide)
+
+Now, go to browser, http://localhost:8080/acuator/configprops --> It shows all the configprop values that has been exposed.It shows all the configuartions and its values currently set.
+
+Using YAML Files
+----------------
+It stands for yet another mark up language and they changed to YAML Ain't mark up language.It is basically a language to store data elements.Here, application.yml is the yaml file.YAML has support for different data types.For strings, don't need to put "" it understand implicitely.YAML has the syntax of key:value.The true benefit of YAML is its nesting structure.It has no duplicate keys.
+For ex:-
+-------
+app:
+   name:My app
+   description: Welcome to ${app.name}
+
+my:
+   greeting: Hello World
+   list:
+       values: one,Two,Three
+
+Spring Profiles
+---------------
+We can think of profiles as set of configuration values go together in a group and form a profile.The new profile is created by creating a new configuration file i.e. application-test.yml.
+
+How to switch from default configuration i.e.application.yml to newly created profile i.e. application-test.yml
+
+--> By addding profile in application.yml which is the default profile and saying the active profile is the name of active profile.
+In application.yml, add spring.profiles.acive: test
+Here, the test profile is got override on default profile.
+
+When are are executing project jar
+--> java -jar spring-boot-config-0.0.1-SNAPSHOT.jar --spring.profiles.active=test(Same jar file but different profiles for different environments.)
+
+Different beans been instantiated by containers depending on the profile. If the profile annotation doesn't set it takes the application default profile.
+Beans have different instantiation depending on profiles.
+If @Profile("default") --> all beans going to be instantiated
+If @Profile("production") --> When application is running in production profile, springboot is gonna initialize production bean.
+If @Profile("dev") --> When application is running in dev profile, springboot is gonna initialize dev bean.
+
+Set up a spring cloud config server
+-----------------------------------
+--> Create a new springboot project(i.e.https://start.spring.io/) having dependency i.e.Config Server.
+
+--> Add, @EnableConfigServer annotation in the main class of the application.
+
+--> Now, config server is ready and its going to pull up values from Git. Then, go to, application.properties file and add spring.cloud.config.server.git.uri
+The "spring.cloud.config.server.git.uri" is the uri for Git repository where this look up values from.
+
+--> create git repository locally - mkdir configrepo, cd configrepo, git init(this initializes a empty git repository), git status(there is one untracked file), git add ., git status(one change to be comitted),git commit -m "Adding config yml file". Now, application.yml file is comitted to Git repo.
+
+--> Add location of the local Git repo to our server property file i.e.In application.properties file, add
+add spring.cloud.config.server.git.uri=${HOME}/code/configrepo(HOME is the system variable - HOME directory) and server.port=8888
+
+--> Start the application and the server is up and running. The url is http://localhost:8888/<file-name>/<profile> i.e.http://localhost:8888/application/default.
+Now, it accessed and shows the application properties which are committed in my YAML file in the Git repo accessed the REST API. We can now, easily make changes in the YAML file committed and then have it refreshed.After that, it will have the latest changes.
+
+--> Spring cloud config server pointing to Git repo.Now, we can have all different micro services talk to this config server.And, if we want to update the configuration then we need not to go to each microservice but all we need to do is update the file in Git repo and push it. We need to deploy to production, just makes changes and push.
+
+Different Microservices ---> Spring Cloud Config Server ---> Git Repo
+
+Spring Cloud Config Client
+--------------------------
+--> Add, "spring-cloud-starter-config" dependency and the dependency management below in POM.xml file.
+<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+During creation of a new spring boot project add "config client" dependency.
+Now, with this one "spring-cloud-starter-config" dependency the microservice application is going to look up spring cloud config server to get the configuration that needed.
+
+--> Go to, application.yml file and add spring.cloud.config.url=http://localhost:8888.This is basically the url where the config server is running.Now the application good to connect to spring cloud config server at this url.When it starts its going to pull up all the properties.
+
+--> Now, start the microservice application and the values will be fetched from the config server.This is the way where the client application is connected to config server to pull up values from there.So, if we have 10 microservices then all of the 10 microservices pull up the values from config server.
+
+--> Configure something in application.properties file(different microservice do have different port)which is microservice specific.For this, we have 10 different application.yml file for 10 different microservices in config server.
+
+--> Add, spring.application.name=spring-boot-config in application.properties file and also add spring-boot-config.yml file in config server.After that, microservice will search for values in .yml file which will match the application name.Here, spring config server will look at the Git repo and see is there any .yml file with the same name of microservice application name.Its going to pick it up.
+
+--> Now, restart the microservice application and then it will fetch values microservice specific values from microservice specific .yml file.
+
+Refreshing Configuration Properties For Microservices In Real Time Without Start/Stop Services
+----------------------------------------------------------------------------------------------
+We can do this by enabling refresh in microservice.
+--> Add "spring-boot-starter-acuator" dependency in POM.xml file.
+
+--> Acuator exposes a hook for us to call and tell the application to refresh its config.It provides an endpoint and we make a POST request to that endpoint to say there is an update in the configuration go fetch the newer config from springboot config server.
+
+--> To mark the classes, beans and services spring components to refresh which are being annotated with @RefreshScope. This is the annotation that tells the spring framework what ever configuration is used in bean class that needs to be refreshed.
+
+--> There are two things need to happen to refresh dynamically.
+1. Dependency on acuator, so that there is an endpoint that we can call to trigger the refersh. 
+2. Imply, @RefreshScope annotation to say all dependencies need to be refreshed.
+
+--> Restart config server, then we are going to make request to this endpoint that being exposed by acuator.Since, its a POST request we are going to use POSTMAN for this.We can use any REST API client that is capable of making a POST request.
+
+--> Open POSTMAN, input url http://localhost:8080/acuator/health (GET)- it tells the application is up and running
+     http://localhost:8080/acuator/refresh (POST)- This is the endpoint we are going to call when we want the application is going to refresh.
+
+--> We are not going to restart the config server.We are going to make changes in spring-boot-config.yml file then git add ., git commit "add text". Now, access the server http://localhost:888/spring-boot-config/default and see the values are updated.
+
+--> Wake ii up the client - Go to, POSTMAN and make the POST request to http://localhost:8080/acuator/refresh .For this set Headers as Content-Type and Accept - application/json and Body is empty.Now, make request by sending the url.The reponse is key that is looking up and value has changed.
+
+--> Go to browser, refresh, http://localhost:8080/greeting to see the updated value in the browser(i.e. That particular bean which has the @RefreshScope annotation has been updated).
+
+Configuration Strategies - When To Use What
+-------------------------------------------
+--> When we have configuration which is very much microservice specific and then its not likely to change a lot.For ex - a microservice use for internal purpose in which it is called by another another microservice internally but its not exposed. In this case, if any changes rarelly happened then to this microservice then we can accomodate values in application.properties file of the application itself. 
+
+--> If something that's microservice specific but then it is likely to change often then you put in a config server.This is an external configuration API that we want to make changes stored and affect the behavior of microservice then you put this in a config server.
+
+--> If the microservice deployed on AWS/ Azure cloud server
+host.environment.post:8080
+env.port: ${host.environment.port}
+server.port: ${env.port}
+
+--> Securing your spring cloud config server - 1. Secure spring clud config server by spring security.Spring security we can throw into any springboot project and we can configure to do basic authentication.Once this is secure then only authorized microservice accessed it.
+2. Use encription to secure that we want to retrieve from spring cloud config server but here we are going to save the plain text values in Git rather we are going to encrypt it.For example, we have credentials, then we are going to save the encrypted value i.e.In application.yml, pass:'{cipher}hhdjjdjjdjjd2s'.Here, the keyword cipher starts out the value.Spring cloud config server has the ability to encrypt and decrypt keys.The encrypted values only when it is accessed can be decrypted and all this work is done by spring config server internally.This particularly works with JCE(Java Cryptograghy Extension).The JVM where the spring cloud server is running needs to have this particular extension i.e. JCE extension which is responsible for encrypting and decrypting.
+
+--> https://12factor.net - Represents microservice adhear to the criterias for best results available in this website.See the section Config, it tells whats the bar we need to set for building microservices for different environments.
+
+
+
+

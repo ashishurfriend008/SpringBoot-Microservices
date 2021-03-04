@@ -1,0 +1,238 @@
+Fault Tolerance 
+---------------
+In a microservice application, if there is a fault then what is the impact of the fault. How much tolerance does the system have for a specific fault.For example, lets say if one micro service instance goes down whats going to happen to your entire microservice application.Here, part of microservice or whole application will go down.What tolerance your system has for particular fault is what called fault tolerance.
+
+Resilience
+----------
+How many faults can a system tolerate and that indicates how resilient it is before it brought down to its need.A part of resilience is also how much a system can bounce back from a fault.For example, let's say something goes down and your system do have mechanism where your system can correct itself.
+
+Most of the times, this two go together.
+
+>> @Value annotation - It is a java annotation that is used at the field or method/constructor parameter level and it indicates a default value for the affected argument.It is commonly used for injecting values into configuration variables.
+
+We can read spring environment variables as well as system variables using @Value annotation.
+
+@Value("true")
+private boolean defaultBoolean;
+
+@Value("10")
+private int defaultInt;
+
+@Value annotation argument can be a string only, but spring tries to convert it to the specified type. Below code will work fine and assign the boolean and integer values to the variable.
+
+Issues Microservices faces
+--------------------------
+>> An microservice instance goes down - If one instance goes down then create duplicate instances of it.There is client side load balancing which is called Ribbon.It does a round robbin.If it sees more than one instance of microservice they it calls two instances of same service alternately.Each of this client has logic in it to handle equal distribution of load.So, having multiple instances is good any way because we can share the load and have it scale better.
+
+>> A microservice instance is slow - This is because, in a web server too many requests coming in and threads are not cleared up quickly.Here each request is assigned to a thread to handle.In such way, in microservices architecture, if few microservices are interdependent to each other then if one microservice is slow in response then it hampers the dependent microservice.Thus whole application becomes slow. So, timeouts is the solution for this problem.Here, we can set timeout on spring RestTemplate.Any service calls another service can have timeout i.e.any service which calls external service using RestTemplate can have timeout technique if the external service is taking bit long time in response.
+
+@LoadBalanced
+	@Bean
+	public RestTemplate getRestTemplate() {
+		HttpComponentsClientHttpRequestFactory clientHttpRequestFactory = new 		HttpComponentsClientHttpRequestFactory(); 
+		clientHttpRequestFactory .setConnectTimeout(3000);
+		return new RestTemplate(clientHttpRequestFactory);
+	} 
+
+The RestTemplate that we are going to get now is going to have the property of 3 seconds set as the timeout.So, anytime we are going to make a call to this RestTemplate as long as the response comes back within 3 secs all good, otherwise, if not in 3 secs then its going to throw an error.It partly solves the issue.Suppose there are 3 requests in 3 secs and if we have set 3 secs then it checks out one request in 3 secs and still there are two requests.
+
+Circuit Breaker
+---------------
+Its basic function is to interrupt current flow after a fault is detected.Technically, we can apply ciruit breaker to every micro service that is calling another micro service.When there is a call it can technically lead to consumption of resources.
+
+Suppose, there are three microservices i.e. MovieCatlogService, MovieInfoService calls MovieDB and RatingsDataService.Due to slowness of MovieDB, the MovieInfoService is also slow.In this case, applying circuit breaker, when the requests comes in to MovieCatlogService then it calls RatingsDataService but didn't call MovieInfoService for the time being. Once MovieInfoService is fast then again MovieCatlogService calls MovieInfoService.Here, circuit breaker is applied over MovieCatlogService.
+
+Circuit Breaker Parameters
+--------------------------
+When does the circuit trip ?
+
+--> Last n requests to consider for the decision 5, how many of those should fail(no.of requests) 3, Timeout duration 2s.
+
+When does the circuit back to normal ?
+
+--> How long after a circuit trip to try again 10s,
+
+>> When the circuit breaks there is a fallback mechanism. 
+If something fails, we are not calling that microservice anymore but the request is coming in and we can not call that service, so we get an error back.All those request get an error response.This is not the correct approach.
+The better approach is to have a default fallback response.OR, previous responses (cache) and use that when possible.
+Circuit breaker provides fallback functionality.The fallback mechanism provides way to return something, so that the consumer application is not even aware that its a fallback.So, no caching need to happen.
+
+Hystrix
+-------
+Hystrix is a open source library which is originally created by Netflix.
+Hystrix implements the circuit breaker pattern.
+Give it the configuration parametes and it does the work - what are the parameters need to set for the circuit to trip.
+Hystrix amazingly well with springboot.
+
+Steps of adding Hystrix to springboot microservice application
+--------------------------------------------------------------
+--> Add the maven "spring-cloud-starter-netflix-hystrix" dependency.
+
+--> Whatever application needs circuit breaker and add @EnableCircuitBreaker annotation to the main application class.In this way, the application is enabled Hystrix.
+
+--> Add, @HystrixCommand to methods that need circuit breakers.
+
+@RequestMapping("/{userId}")
+@HystrixCommand(fallbackMethod = "getFallBackCatlog")
+    public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
+
+        UserRating userRating = restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
+
+        return userRating.getRatings().stream()
+                .map(rating -> {
+                    Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
+                    return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
+                })
+                .collect(Collectors.toList());
+
+    }
+
+public List<CatalogItem> getFallBackCatlog(@PathVariable("userId") String userId) {
+
+}	return Arrays.asList(new CatlogItem("No Movie", "", 0));
+
+Note - Fall back methods should be simple hard coded responses.Or, pick something from the cache.It reduce the possobility of an error when the fall back method executes.
+
+--> Configure Hystrix behavior. 
+
+It uses the fall back method when the service goes down.Thats part of the default behaviour.
+
+If you have one method calling two APIs. If one of the API fails then then the circuit would break.But this approach can be better.In this case we need to be bit granular.So, we have separate method for MovieInfoService and RatingsDataService i.e. one method in MovieCatlogService break it into two methods that calls MovieInfoService and RatingsDataService separately.Hence, instaed of having fallback for MovieCatlogService, we have fallback for MovieInfoService and RatingsDataService separately.If suppose, RatingsDataService  fails then we are going to have fallback hardcoded ratings data response and similarly, if MovieInfoService fails then we are going to have fallback hardcoded movie info response.In this way, we have more granularity in fallback machanism.
+
+@HystrixCommand(fallbackMethod = "getFallBackCatlogItem")
+private CatalogItem getCatalogItem(Rating rating) {
+        Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
+	 return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
+}
+
+//fallback mechanism
+private CatalogItem getFallBackCatlogItem(Rating rating) {
+	return new CatlogItem("Movie name not found", "", rating.getRating());
+}
+
+@HystrixCommand(fallbackMethod = "getFallBackUserRating")
+private UserRating getUserRating(@PathVariable("userId") String userId){
+	return restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
+}
+
+//fallback mechanism
+private UserRating getFallBackUserRating(@PathVariable("userId") String userId){
+//hardcoded data
+UserRating userRating = new UserRating();
+userRating.setUserId(userId);
+userRating.setRatings(Arrays.asList(
+	new Rating("0", 0)
+));
+return userRating;
+}
+
+
+How Hystrix works
+-----------------
+The proxy class is the wrapper around the instance of the API class.
+It actually wraps the class in a proxy class.When somebody is looking for the instance of that class its actually getting the instance of proxy class that hystrix is created and wrapped around it.This proxy class contains the circuit breaker logic.When somebody makes a call hystrix is constantly monitoring what it is returning back.
+
+Refactoring code base structure
+-------------------------------
+Create two services, one service for MovieInfo API call and the fallback and another service for RatingsDataService API call and the fallback. The main call which is annotated with @HystrixCommand and the fallback method both have to be inside the same class.Then, whoever is calling main API or fallback can be in another class.It should be in another class for Hystrix to take effect.
+
+MovieInfo.java
+
+@Service
+public class Movieinfo {
+
+@Autowired
+private RestTemplate restTemplate;
+
+@HystrixCommand(fallbackMethod = "getFallBackCatlogItem")
+public CatalogItem getCatalogItem(Rating rating) {
+        Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
+	 return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
+}
+
+//fallback mechanism
+public CatalogItem getFallBackCatlogItem(Rating rating) {
+	return new CatlogItem("Movie name not found", "", rating.getRating());
+}
+
+}
+
+UserRatingInfo.java
+
+@Service
+public  class UserRatingInfo{
+
+@Autowired
+private RestTemplate restTemplate;
+
+@HystrixCommand(fallbackMethod = "getFallBackUserRating")
+public UserRating getUserRating(@PathVariable("userId") String userId){
+	return restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
+}
+
+//fallback mechanism
+public UserRating getFallBackUserRating(@PathVariable("userId") String userId){
+//hardcoded data
+UserRating userRating = new UserRating();
+userRating.setUserId(userId);
+userRating.setRatings(Arrays.asList(
+	new Rating("0", 0)
+));
+return userRating;
+}
+
+}
+
+
+CatlogResource.java
+
+public class CatalogResource{
+
+@Autowired
+private RestTemplate restTemplate;
+
+@Autowired
+MovieInfo movieInfo;
+
+@Autowired
+UserRatingInfo userRatingInfo;
+
+@RequestMapping("{/userId}")
+public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
+
+UserRating userRating = userRatingInfo.getUserRating(userId);
+return userRating.getRatings().stream()
+                 .map(rating -> movieInfo.getCatalogItem(rating))
+		 .collect(Collectors.toList());
+}
+
+}
+
+This done to separate logic to separate services to separate class in order to ignore whole lot of things in controller.This is the granular level of fallback.
+
+
+Configuring Hystrix Parameters
+-------------------------------
+
+
+@HystrixCommand(fallbackMethod = "getFallBackUserRating",
+	commandProperties = {
+			@HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "2000"),
+			@HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "5"), --> no.of requests its need to see i.e. look at the last n request
+			@HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "50"), --> percentage of requests failed
+			@HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "5000") --> how long the circuit breaker is going to sleep before it picks up again
+
+})
+public UserRating getUserRating(@PathVariable("userId") String userId){
+	return restTemplate.getForObject("http://ratings-data-service/ratingsdata/user/" + userId, UserRating.class);
+}
+
+
+Hystrix Dashboard
+-----------------
+Ability to display data in a dashboard.We can set up dashboard for single as well as mutiple microservice applications.Add, "spring-cloud-starter-netflix-hystrix-dashboard" and "spring-boot-starter-actuator" dependencies in POM.xml file.Now, add @EnableHystrixDashboard in the main application class of MovieCatlogServiceApplication - This annotation make hystrix dashboard application.Open, application.properties file of the application and add "management.endpoints.web.exposure.include=hystrix.stream" without this hystrix dashboard does not work.Here, with this property we are exposing endpoint called hystrix.stream which is where the hystrix data is going to be stream and thats what the hystrix dashboard is going to do to show hystix information.Now, restart the application.Go to the browser, http://localhost:8081/hystrix and get the hystrix web page.This page gives us an oppertunity to enter the url which can be either a cluster or a single hystrix app.And, put that url and click the monitor stream button to get the hystrix dashboard.Here, we can see the no. of requests going into each microservice, the no.of times these things are being accessed, see the median perfomance of these microservices, time its taking in milli secs, see information about the threads pools(i.e. pool size).
+
+Bulkhead Pattern
+----------------
+
+   

@@ -1,0 +1,168 @@
+Rest template is build into Springboot framework.It comes with a client already in your class path i.e. Rest Template.Rest template will be deprecated soon but there is another way to do which replace Rest template that is Web client.Web client required reactive programming.Reactive programming allows aynchronous construct.
+
+The data which is transferred over is string.We need objects to deal with data and object need particular class.
+
+Rest Template to make API calls(REST API CALLS)
+-----------------------------------------------
+Rest template is the utility object which going to make calls to APIs.Rest template create the response of the class, populate those properties to it and return back the fully formed object.
+
+RestTemplate restTemplate = new RestTemplate();
+//Get the resource and unmarshall into an object
+restTemplate.getForObject(URL, String); --> This String augument helps us to unmarshall into an object.
+If we know the payload of response then we can provide a class which has the same properties as JSON. Rest Template create the instance of that class, populate those properties to it and its going to give us a fully formed object.
+This is the class that it needs to unmarshall to.
+
+Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
+return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
+
+>> How do we create a single instance of any object in any spring application and have it shared across multiple other classes.
+
+--> Create a bean and beans in spring by default singletons. Put this in a bean and use dependency injection to say spring give me that instance.
+
+@Bean
+public RestTemplate getRestTemplate(){
+return new RestTemplate();
+} --> Execute this method and save this method somewhere. This method could be anywhere in the classpath.Typically, it should be one method which produces one instance. If two methods then we need to tag those methods by qualifiers.
+
+Spring is going to execute this above method and say RestTemplate maps to this one instance.Anything, autowired to this method i.e.RestTemplate it is going to get this one instance.This method executes just once.
+
+In spring, @Autowired is a consumer.Whenever we are autowiring we are basically telling spring give us something.And, @Bean is a producer and programmer telling spring hey we have something that the people will need.
+
+Note - RestTemplate is thread safe.One call is not going to affect another call.We can make RestTemplate call authenticated as a part of security.
+
+WebClient to make API Calls(REST API CALLS)
+-------------------------------------------
+Basically, it is used for asynchronous purpose. That means, we execute a call through WebClient and can do other stuff.We don't wait around for WebClient call return.
+WebClient is not normally comes in into the default classpath of any springboot application.Add, Reactive Web dependency which has Netty and spring web flux.If not added initially during the project creation initially then add spring-boot-starter-webflux in POM.xml.
+
+WebClient.builder --> it is a builder pattern and we use it to build the client anytime to make the call.When we create a new instance of RestTemplate then that is the builder.
+
+WebClient.builder builder = WebClient.builder();
+
+@Bean
+public WebClient.Builder getWebClientBuilder(){
+	return WebClient.builder();
+}
+
+In Controller class
+Movie movie = webClientBuilder.build()
+.get()
+.uri("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class)
+.retrieve()
+.bodyToMono(Movie.class) --> it is getting back an asynchronous object
+.block();
+
+Why hard coaded URLs are back ?
+--> Dynamic URls in the cloud, when you deploy something to the cloud you get dynamic URLs, so we need to accomodate the change, Multiple environment issues, load balancing(having multiple instances of same service). Because of all this we have service discovery.This is one of the pattern.When you build microservices we need them to talk to each other and how did they know what to talk to.They discover the target.
+
+>> The spring cloud uses client side discovery. The application using springboot or spring cloud and then we say we want to use service discovery. The library that facilitates service discovery will reside on the client.We need discovery server which is not residing on the client.Discovery server register services.The work involve in calling the discovery server, getting the information where to call and then making the actual call happens on the client.
+You have an API to call discovery server, get a list of services, pass through it and make another call.We don't have to all the stuff because spring handle this and also spring handles caching.
+
+>> The technology to implement service discovery at least the spring cloud uses and integrates with is Eureka.We are going to use spring cloud and Eureka to discover those URLs  instead of hard coading them.We have to create discovery server, we have to have the layer of abstraction.So, we are going to start up Eureka server amd then we going to have these individuals microservices be Eureka clients.Eureka client register with Eureka server.Eureka client is going two things : Its telling the Eureka server hey am here and let me know somebody needs me and then Eureka client can also talk to the Eureka server if it needs something.
+
+>> Netflix open source who is one of the leaders in microservice libraries that works well with springboot.They created bunch of different libraries like Eureka, Ribbon, Hysterix, Zuul.
+
+Steps to make this work
+----------------------
+--> Start up a Eureka server
+--> Have microservices register(publish) using Eureka client
+--> Have microservice locate(consume) using Eureka client
+
+Creation of Eureka Server 
+-------------------------
+when you create a Eureka server its actually creates a springboot application.Go to, https://start.spring.io i.e. the spring initializer and input the Group and Artifact. Add, Dependencies as Eureka Server and Eureka Discovery(eureka client).Whatever application we want to do discovering or to publish or tell Eureka server then use Eureka client dependency.The @EnableEurekaServer annotation which tells springboot that this is Eureka server and this is to be added in the main method of the Eureka server application.Dependency of Eureka server is "spring-cloud-starter-netflix-eureka-server".If the java version is java 11 it throws bunch of jaxb errors.So, add the jaxb libaries as jaxb-api, jaxb-impl, jaxb-runtime, activation.Additionally, jaxb was deprecated from java 9 onwards.Now, start the Eureka by accessing url i.e. http://localhost:8761.By default, Eureka server runs on port 8761.This is actually a UI that spring Eureka comes by default.Add couple of properties in the .properties file of the application, otherwise, we will get bunch of errors in the console.
+
+server.port=8761
+eureka.client.register-with-eureka=false
+eureka.client.fetch-registry=false
+
+Apart from server.port, we add the two properties to the Eureka server, so that Eureka does not register with itself.Here, every Eureka server is also a Eureka client.When it runs not only it provides the registry it also tries to register with other Eureka server.Not only we have multiple instances of microservices but also multiple instances of Eureka servers as well.And, they can register with each other, so that if one server fails then other server provides the directory service.Therefore, these two properties tells Eureka server here that stop acting like a client.
+
+Finally, we have Eureka server to accept requests.
+
+Now, we need to have microservices to make those requests.
+
+Lets start with movie-info-service which publish to Eureka server. Here, go to, POM.xml and add "spring-cloud-starter-netflix-eureka-client" gets you client downloaded and added to the classpath.The other thing, provide the spring cloud version as a property.It should be added in the java version property of POM.xml.
+<spring-cloud.version>Greenwich.RELEASE</spring-cloud.version> 
+
+Also add in POM.xml,
+
+<repositories>
+<repository>
+<id>spring-milestones</id>
+<name>Spring Milestones</name>
+<url>https://repo.spring.io/milestone</url>
+</repository>
+</repositories>
+
+<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+Note - Spring wrapper that incorporates those Netflix open source projects are a part of the spring cloud family.
+
+Now,run the MovieInfoServiceApplication and go to Eureka server url and refresh the server page and will notice that there is a service register to the Eureka but its name happens to be unknown but its done its job.It's registered. The reason it is unknown because we haven't set the name for that microservice.
+Add, spring.application.name=movie-info-service in application.properties file.Now,we can see the MOVIE-INFO-SERVICE in the instances currently registered with Eureka.Add, @EnableEurekaClient annotation to the MovieInfoServiceApplication main file of application.
+
+Note - If the Eureka server lies in different server then add those properties in application.properties file, so that Eureka client can locate Eureka server.
+
+Like wise, register other two services i.e.MOVIE-INFO-SERVICE and RATINGS-DATA-SERVICE to the Eureka server.
+
+Now, consuming the services
+---------------------------
+@LoadBalanced
+	@Bean
+	public RestTemplate getRestTemplate() {
+		return new RestTemplate();
+	}
+} --> Just by adding@LoadBalanced, RestTemplate will look for hints about which service to call when we give it the URL.
+
+Add, @LoadBalanced annotation to the RestTemplate.This annotation does service discovery in a load balanced way.It is basically telling the RestTemplate don't go the service directly.Whatever URL it is giving its not the actual URL.The URL that it is giving is actually a hint about what service we need to discover. That's what this annotation does.Moreover, @LoadBalanced is also doing the client side service discovery. Here, all the abstraction is hidden in the library. 
+
+@LoadBalanced annotation is not only doing service discovery but it is also doing client side load balancing.
+
+Discovery Server - Discovery server registers the services.It acts as service registry.Anyone, who needs to locate a service would just ask it for help.The process of asking the discovery server for help to get to a service that we need is essentially called service discovery.It accurately called service location discovery because we are discovering their location of service.
+
+Discovery server works
+----------------------
+There are two patterns
+--> Client side service discovery - Client --> Discovery Server --> Service. In case of microservices, client microservice does look up with the discovery server to identify the location of the service it needs then it makes a second request to the actual service itself.This is client side service discovery.
+
+Disadvantage 
+------------
+The client has to make two calls 1> First call to the service registry(Discovery Server) and second to the actual service
+
+
+--> Server side service discovery - Here, the client is not doing the work.It is the server that's doing the work for us.Client --> Discovery Server(doing work/Load Balanced) --> Service.In case of microservices, we essentially have something running on server that accepts requests.The client sends the request and information about the service it actually wants to reach.This entity on the server channels or transport to the right destination.
+
+Advantage
+---------
+There are multiple call that need to be done by the client but the work done by the server side component.
+
+Disadvantage 
+------------
+Server side component running at all time that knows how to do the stuff.Service discovery i.e. load balancer running on the server all time.
+
+Note - Eureka does client side service discovery.
+Nginx, AWS that provides solution of server side service discovery.
+
+How fault tolerance works
+-------------------------
+If there are 3 services registered in Eureka server.However, if service 2 goes down then what happens.
+
+--> By default, Eureka client ping the Eureka server on regular basis and send out heart beats.And, Eureka server has functionality if something doesn't ping in a certain time i.e. it won't receives heart beat signals then it ends that.That means it says the service is down.It removes from service registry.
+
+What if if discovery server goes down.
+
+--> Then cache comes into play.No response, just look up from the cache for now.
+
+
+
+
